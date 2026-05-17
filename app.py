@@ -1,12 +1,22 @@
+# ===================================================================
+# STARTUP GAME - TOÀN BỘ CODE GỘP TRONG MỘT FILE
+# PHÂN CÔNG:
+# - MINH: Dữ liệu cố định, Card Engine, Utils
+# - PHÚC: Metrics, Game Controller (process_phase, reset_for_next_phase)
+# - JIN: Attractiveness, Bot AI, Reaction Manager
+# - KHANH: API Routing, Flask app, Rooms management
+# - DƯƠNG: templates/host.html, templates/play.html (riêng)
+# ===================================================================
+
 from flask import Flask, render_template, request, jsonify
 import random
 import math
 import uuid
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 app.secret_key = 'startup-game-secret'
 
-# ===================== DỮ LIỆU CỐ ĐỊNH =====================
+# ===================== MINH: DỮ LIỆU CỐ ĐỊNH =====================
 SCENARIOS = [
     # Market (6)
     {"id":1,"name":"Tin tốt nhẹ","cat":"Market","delta":{"price":0.05,"cogs":0,"hype":10,"sentiment":5,"transparency":0,"reg_risk":0}},
@@ -45,8 +55,6 @@ SCENARIOS = [
     {"id":30,"name":"Bug bounty thành công","cat":"Security","delta":{"security":15,"transparency":5,"trust_all":5,"hype":5}},
 ]
 
-
-# 42 Active cards đầy đủ (đã có trong các câu trả lời trước, tôi lấy 42 cái)
 ACTIVE_CARDS_FULL = [
     {"id":"A1","name":"Marketing Blitz","cost":2,"type":"red","desc":"Tăng Hype, giảm Transparency","effect":{"hype":25,"transparency":-5,"cost_percent":3}},
     {"id":"A2","name":"Viral Campaign","cost":3,"type":"red","desc":"Tăng Hype mạnh","effect":{"hype":40,"transparency":-10,"cost_percent":5}},
@@ -92,11 +100,6 @@ ACTIVE_CARDS_FULL = [
     {"id":"T14","name":"Equity Swap","cost":3,"type":"purple","desc":"Tăng funding mạnh, giảm trust, dilution cao","effect":{"funding_boost_percent":30,"trust_all":-20,"dilution":20}},
 ]
 
-
-# Chỉ dùng 22 thẻ đầu để người chơi chọn? Không, yêu cầu hiển thị 42 thẻ. Vậy dùng toàn bộ.
-ALL_ACTIVE_CARDS = ACTIVE_CARDS_FULL  # 42 thẻ
-
-
 REACTION_CARDS = [
     {"id":"R1","name":"Lock‑up Extension","trigger":"on_bot_withdraw","desc":"Giảm bán tháo khi bot rút","cost_percent":2,"effect":{"sell_pressure_reduce":0.5}},
     {"id":"R2","name":"Emergency PR","trigger":"on_scenario_market_bad","desc":"Giảm 50% delta xấu","cost_percent":3,"effect":{"halve_negative_delta":1}},
@@ -110,38 +113,32 @@ REACTION_CARDS = [
     {"id":"R10","name":"Runway Boost","trigger":"on_runway<3","desc":"Thêm 3 tháng runway","cost_percent":10,"effect":{"runway":3}},
 ]
 
+# 200 bot (sinh ngẫu nhiên) - dùng seed cố định để đồng bộ
+random.seed(42)
+BOTS = []
+for i in range(1, 201):
+    bot_type = random.choices(["FOMO","Value Hunter","Whale","Random"], weights=[50,30,10,10])[0]
+    wealth_class = random.choices(["small","medium","large"], weights=[40,40,20])[0]
+    wealth = {"small":random.randint(10000,50000), "medium":random.randint(100000,500000), "large":random.randint(500000,2000000)}[wealth_class]
+    hype_sens = round(random.uniform(1.2,1.8),2)
+    trans_sens = round(random.uniform(0.5,1.2),2)
+    decay = round(random.uniform(0.1,0.3),2)
+    if bot_type == "FOMO":
+        weights = {"intrinsic":0.1,"valuation":0.1,"roi_norm":0.1,"scalability":0.05,"transparency":0.05,"hype":0.28,"visibility":0.09,"funding_prog":0.09,"liquidity":0.14}
+    elif bot_type == "Value Hunter":
+        weights = {"intrinsic":0.27,"valuation":0.2,"roi_norm":0.15,"scalability":0.03,"transparency":0.14,"funding_prog":0.05,"liquidity":0.07}
+    elif bot_type == "Whale":
+        weights = {"intrinsic":0.17,"valuation":0.2,"roi_norm":0.15,"scalability":0.03,"transparency":0.18,"funding_prog":0.05,"liquidity":0.07}
+    else:
+        weights = {"intrinsic":0.1,"valuation":0.1,"roi_norm":0.1,"scalability":0.05,"transparency":0.05,"hype":0.08,"visibility":0.05,"funding_prog":0.09,"liquidity":0.18}
+    BOTS.append({"id":i,"type":bot_type,"wealth_class":wealth_class,"wealth":wealth,"hype_sens":hype_sens,"trans_sens":trans_sens,"memory_decay_rate":decay,"weights":weights})
 
-# 200 bot (sinh ngẫu nhiên)
-BOTS = []                  # sẽ tạo sau khi seed
+# ===================== MINH: UTILS =====================
+def clamp(x, lo, hi):
+    return max(lo, min(hi, x))
 
-def init_bots(seed=42):
-    random.seed(seed)
-    bots = []
-    for i in range(1, 201):
-        bot_type = random.choices(["FOMO","Value Hunter","Whale","Random"], weights=[50,30,10,10])[0]
-        wealth_class = random.choices(["small","medium","large"], weights=[40,40,20])[0]
-        wealth = {"small":random.randint(10000,50000), "medium":random.randint(100000,500000), "large":random.randint(500000,2000000)}[wealth_class]
-        hype_sens = round(random.uniform(1.2,1.8),2)
-        trans_sens = round(random.uniform(0.5,1.2),2)
-        decay = round(random.uniform(0.1,0.3),2)
-        if bot_type == "FOMO":
-            weights = {"intrinsic":0.1,"valuation":0.1,"roi_norm":0.1,"scalability":0.05,"transparency":0.05,"hype":0.28,"visibility":0.09,"funding_prog":0.09,"liquidity":0.14}
-        elif bot_type == "Value Hunter":
-            weights = {"intrinsic":0.27,"valuation":0.2,"roi_norm":0.15,"scalability":0.03,"transparency":0.14,"funding_prog":0.05,"liquidity":0.07}
-        elif bot_type == "Whale":
-            weights = {"intrinsic":0.17,"valuation":0.2,"roi_norm":0.15,"scalability":0.03,"transparency":0.18,"funding_prog":0.05,"liquidity":0.07}
-        else:
-            weights = {"intrinsic":0.1,"valuation":0.1,"roi_norm":0.1,"scalability":0.05,"transparency":0.05,"hype":0.08,"visibility":0.05,"funding_prog":0.09,"liquidity":0.18}
-        bots.append({"id":i,"type":bot_type,"wealth_class":wealth_class,"wealth":wealth,"hype_sens":hype_sens,"trans_sens":trans_sens,"memory_decay_rate":decay,"weights":weights})
-    return bots
-
-BOTS = init_bots(42)   # seed cố định để đồng bộ
-
-# ===================== HÀM TÍNH TOÁN =====================
-def clamp(x, lo, hi): return max(lo, min(hi, x))
-
+# ===================== PHÚC: METRICS =====================
 def calculate_metrics(proj):
-    # Giữ nguyên logic của bạn
     ch_fees = (proj["fee_ecom"] + proj["fee_retail"] + proj["fee_direct"]) / 100.0
     price_real = proj["price"] * (1 - ch_fees)
     cogs_unit = proj["material"] + proj["packaging"] + proj["shipping"] + proj["defect_rate"]*(proj["material"]+proj["packaging"]+proj["shipping"])
@@ -186,9 +183,21 @@ def calculate_metrics(proj):
         "runway":runway, "liquidity":liquidity, "funding_progress":proj.get("funding_progress",0)
     }
 
+def final_score(proj, phases_used, metrics):
+    if proj["funding_progress"] < 0.5:
+        return 0
+    funding_score = proj["funding_progress"] * 30
+    speed_score = (100 - phases_used) * 0.2
+    roi_score = min(30, max(0, (metrics["roi_norm"]/100)*30))
+    trans_score = (proj["transparency"]/100)*20
+    raw = funding_score + speed_score + roi_score + trans_score
+    perf_phase = raw / phases_used if phases_used>0 else 0
+    return perf_phase * proj["scale_factor"] * (1 + proj["funding_progress"])
+
+# ===================== JIN: ATTRACTIVENESS =====================
 def attractiveness(project, bot, metrics):
-    # Giữ nguyên
-    raw = 0; total_w = 0
+    raw = 0
+    total_w = 0
     for key, w in bot["weights"].items():
         if key=="intrinsic": val = metrics["intrinsic"]
         elif key=="valuation": val = metrics["valuation_sanity"]
@@ -211,18 +220,266 @@ def attractiveness(project, bot, metrics):
     noise = random.uniform(-5,5) if bot["type"]!="Random" else random.uniform(-10,10)
     return raw_A * (trust/100) + noise
 
-def final_score(proj, phases_used, metrics):
-    if proj["funding_progress"] < 0.5:
-        return 0
-    funding_score = proj["funding_progress"] * 30
-    speed_score = (100 - phases_used) * 0.2
-    roi_score = min(30, max(0, (metrics["roi_norm"]/100)*30))
-    trans_score = (proj["transparency"]/100)*20
-    raw = funding_score + speed_score + roi_score + trans_score
-    perf_phase = raw / phases_used if phases_used>0 else 0
-    return perf_phase * proj["scale_factor"] * (1 + proj["funding_progress"])
+# ===================== JIN: BOT AI (RÚT VỐN VÀ ĐẦU TƯ) =====================
+def softmax(values, temperature=20):
+    exp_vals = [math.exp(v/temperature) for v in values]
+    total = sum(exp_vals)
+    return [v/total for v in exp_vals]
 
-# ===================== QUẢN LÝ PHÒNG =====================
+def process_withdrawals(room, A_matrix, phase):
+    players = room['players']
+    bot_alloc = room['bot_alloc']
+    logs = []
+    for bot in BOTS:
+        best_idx = max(range(len(players)), key=lambda i: A_matrix[(bot['id'], i)])
+        alloc_entry = next(entry for entry in bot_alloc if entry['bot_id'] == bot['id'])
+        for idx in range(len(players)):
+            invested = alloc_entry['perProject'][idx]
+            if invested == 0: continue
+            if players[idx].get('status') != 'active' or players[idx].get('current_phase',0) >= players[idx]['max_phase']:
+                continue
+            diff = A_matrix[(bot['id'], best_idx)] - A_matrix[(bot['id'], idx)]
+            if diff > 15: withdraw_ratio = 1.0
+            elif diff > 5: withdraw_ratio = 0.3
+            else: withdraw_ratio = 0.0
+            if withdraw_ratio > 0:
+                desired = invested * withdraw_ratio
+                max_ratio = min(0.6, 0.2 + (phase-1)*0.05)
+                max_withdraw = invested * max_ratio
+                if desired > max_withdraw:
+                    extra = desired - max_withdraw
+                    actual = max_withdraw + extra*0.5
+                else:
+                    actual = desired
+                if actual <= players[idx]['available_cash']:
+                    players[idx]['available_cash'] -= actual
+                    alloc_entry['perProject'][idx] -= actual
+                    alloc_entry['idle'] += actual
+                    logs.append(f"🐋 Bot {bot['type']} rút {actual:.0f} từ dự án {idx+1}")
+                    # Kích hoạt reaction on_bot_withdraw
+                    for pidx, proj in enumerate(players):
+                        if proj:
+                            for rc in proj.get('reaction_hand', []):
+                                if rc['trigger'] == 'on_bot_withdraw':
+                                    if rc not in room['player_triggers'][pidx].get('available_reactions', []):
+                                        room['player_triggers'][pidx].setdefault('available_reactions', []).append(rc)
+                else:
+                    players[idx]['status'] = 'bankrupt'
+                    players[idx]['funding_progress'] = 0
+                    logs.append(f"💀 Dự án {idx+1} PHÁ SẢN!")
+    return logs
+
+def process_investments(room, A_matrix, phase):
+    players = room['players']
+    bot_alloc = room['bot_alloc']
+    logs = []
+    for bot in BOTS:
+        alloc_entry = next(entry for entry in bot_alloc if entry['bot_id'] == bot['id'])
+        idle = alloc_entry['idle']
+        if idle <= 0: continue
+        candidates = [i for i,p in enumerate(players) if p and p['status']=='active' and p['funding_progress']<1 and p.get('current_phase',0) < p['max_phase']]
+        if not candidates: continue
+        attrs = [A_matrix[(bot['id'], i)] for i in candidates]
+        min_a = min(attrs)
+        shifted = [max(0, a-min_a+0.01) for a in attrs]
+        probs = softmax(shifted, temperature=20)
+        remaining = idle
+        for _ in range(5):
+            if remaining <= 0: break
+            for j, idx in enumerate(candidates):
+                invest = remaining * probs[j]
+                cap = min(invest, players[idx]['target_funding']*0.25 - players[idx]['total_invested'])
+                if phase == 1:
+                    cap = min(cap, players[idx]['target_funding']*0.2 - players[idx]['total_invested'])
+                if cap > 0:
+                    players[idx]['total_invested'] += cap
+                    players[idx]['available_cash'] += cap
+                    players[idx]['funding_progress'] = min(1.0, players[idx]['total_invested']/players[idx]['target_funding'])
+                    alloc_entry['perProject'][idx] += cap
+                    remaining -= cap
+                    logs.append(f"💸 Bot {bot['type']} đầu tư {cap:.0f} vào dự án {idx+1}")
+        alloc_entry['idle'] = remaining
+    return logs
+
+# ===================== JIN: REACTION MANAGER =====================
+def check_on_scenario_market_bad(scenario):
+    return scenario['cat'] == 'Market' and ('xấu' in scenario['name'] or 'Khủng hoảng' in scenario['name'])
+
+def check_on_whale_trust(proj):
+    whale_trust = [proj['trust_scores'][bid] for bid, bot in enumerate(BOTS) if bot['type']=='Whale']
+    return whale_trust and sum(whale_trust)/len(whale_trust) < 30
+
+def check_on_transparency(proj):
+    return proj['transparency'] < 30
+
+def check_on_reg_risk(proj):
+    reg = (proj['legal_cost_spent'] / proj['target_funding']) * 100 if proj['target_funding']>0 else 0
+    return reg > 70
+
+def check_on_security(proj):
+    return proj.get('security', 50) < 30
+
+def check_on_hype(proj):
+    return proj['hype'] > 80
+
+def check_on_trust_any_bot(proj):
+    return any(t < 20 for t in proj['trust_scores'].values())
+
+def check_on_runway(proj):
+    metrics = calculate_metrics(proj)
+    return metrics['runway'] < 3
+
+def check_and_trigger_reactions(room, idx, proj, scenario):
+    triggers = []
+    for rc in proj.get('reaction_hand', []):
+        trigger = rc['trigger']
+        if trigger == 'on_scenario_market_bad' and check_on_scenario_market_bad(scenario):
+            triggers.append(rc)
+        elif trigger == 'on_whale_trust<30' and check_on_whale_trust(proj):
+            triggers.append(rc)
+        elif trigger == 'on_transparency<30' and check_on_transparency(proj):
+            triggers.append(rc)
+        elif trigger == 'on_reg_risk>70' and check_on_reg_risk(proj):
+            triggers.append(rc)
+        elif trigger == 'on_security<30' and check_on_security(proj):
+            triggers.append(rc)
+        elif trigger == 'on_hype>80' and check_on_hype(proj):
+            triggers.append(rc)
+        elif trigger == 'on_trust_any_bot<20' and check_on_trust_any_bot(proj):
+            triggers.append(rc)
+        elif trigger == 'on_runway<3' and check_on_runway(proj):
+            triggers.append(rc)
+    if triggers:
+        room['player_triggers'][idx]['available_reactions'] = triggers
+
+def apply_reaction_effect(proj, reaction_card, room, player_idx):
+    eff = reaction_card['effect']
+    if 'transparency' in eff: proj['transparency'] += eff['transparency']
+    if 'hype' in eff: proj['hype'] += eff['hype']
+    if 'runway' in eff:
+        m = calculate_metrics(proj)
+        proj['available_cash'] += eff['runway'] * m['monthly_burn']
+    if 'reg_risk' in eff:
+        proj['legal_cost_spent'] -= (eff['reg_risk']/100) * proj['target_funding'] if eff['reg_risk']<0 else 0
+    if 'security' in eff:
+        proj['security'] = max(0, proj.get('security',50) + eff['security'])
+    if 'trust_all' in eff:
+        for bid in proj['trust_scores']:
+            proj['trust_scores'][bid] = clamp(proj['trust_scores'][bid] + eff['trust_all'], 0, 100)
+    if 'whale_trust' in eff:
+        for bid, bot in enumerate(BOTS):
+            if bot['type'] == 'Whale':
+                proj['trust_scores'][bid] = clamp(proj['trust_scores'][bid] + eff['whale_trust'], 0, 100)
+    if 'trust_single' in eff:
+        min_bid = min(proj['trust_scores'], key=proj['trust_scores'].get)
+        proj['trust_scores'][min_bid] = clamp(proj['trust_scores'][min_bid] + eff['trust_single'], 0, 100)
+    proj['available_cash'] -= (reaction_card['cost_percent']/100) * proj['target_funding']
+    proj['reaction_hand'].pop(reaction_index)
+    room['player_triggers'][player_idx]['available_reactions'] = [
+        r for r in room['player_triggers'][player_idx]['available_reactions'] if r['id'] != reaction_card['id']
+    ]
+
+# ===================== PHÚC: GAME CONTROLLER =====================
+def process_phase(room):
+    players = room['players']
+    logs = []
+    phase = room['phase']
+    # Reset triggers
+    for i in range(room['num_players']):
+        room['player_triggers'][i] = {'available_reactions': []}
+    
+    # 1. Xử lý scenario và thẻ active
+    for idx, proj in enumerate(players):
+        if not proj or proj.get('current_phase', 0) >= proj['max_phase']:
+            continue
+        scenario = random.choice(SCENARIOS)
+        proj['last_scenario'] = scenario['name']
+        logs.append(f"Dự án {idx+1}: {scenario['name']}")
+        d = scenario['delta']
+        if 'price' in d: proj['price'] *= (1 + d['price'])
+        if 'cogs' in d:
+            proj['material'] *= (1 + d['cogs'])
+            proj['packaging'] *= (1 + d['cogs'])
+            proj['shipping'] *= (1 + d['cogs'])
+        if 'hype' in d: proj['hype'] = clamp(proj['hype'] + d['hype'], 0, 100)
+        if 'transparency' in d: proj['transparency'] = clamp(proj['transparency'] + d['transparency'], 0, 100)
+        if 'trust_all' in d:
+            for bid in proj['trust_scores']:
+                proj['trust_scores'][bid] = clamp(proj['trust_scores'][bid] + d['trust_all'], 0, 100)
+        if 'runway' in d:
+            metrics_before = calculate_metrics(proj)
+            proj['available_cash'] += d['runway'] * metrics_before['monthly_burn']
+        if 'legal_cost_percent' in d:
+            cost = (d['legal_cost_percent']/100) * proj['target_funding']
+            proj['legal_cost_spent'] += cost
+            proj['available_cash'] -= cost
+        if 'reg_risk' in d:
+            proj['legal_cost_spent'] += (d['reg_risk']/100) * proj['target_funding']
+        # Áp dụng thẻ active
+        if idx in room['pending_cards']:
+            card = room['pending_cards'][idx]
+            if card:
+                eff = card['effect']
+                if 'hype' in eff: proj['hype'] = clamp(proj['hype'] + eff['hype'], 0, 100)
+                if 'transparency' in eff: proj['transparency'] = clamp(proj['transparency'] + eff['transparency'], 0, 100)
+                if 'price_percent' in eff: proj['price'] *= (1 + eff['price_percent']/100)
+                if 'cogs_percent' in eff:
+                    proj['material'] *= (1 + eff['cogs_percent']/100)
+                    proj['packaging'] *= (1 + eff['cogs_percent']/100)
+                    proj['shipping'] *= (1 + eff['cogs_percent']/100)
+                if 'funding_boost_percent' in eff:
+                    boost = (eff['funding_boost_percent']/100) * proj['target_funding']
+                    proj['total_invested'] += boost
+                    proj['available_cash'] += boost
+                    proj['funding_progress'] = min(1.0, proj['total_invested']/proj['target_funding'])
+                if 'cost_percent' in eff:
+                    proj['available_cash'] -= (eff['cost_percent']/100) * proj['target_funding']
+                if 'security' in eff:
+                    proj['security'] = clamp(proj.get('security',50) + eff['security'], 0, 100)
+                if 'utility' in eff:
+                    proj['utility'] = clamp(proj.get('utility',50) + eff['utility'], 0, 100)
+                if 'visibility' in eff:
+                    proj['visibility'] = clamp(proj.get('visibility',50) + eff['visibility'], 0, 100)
+                if 'velocity' in eff:
+                    proj['velocity'] = max(0.1, proj.get('velocity',1.0) + eff['velocity'])
+                logs.append(f"  → Dự án {idx+1} chơi thẻ {card['name']}")
+        # Xác định reaction triggers
+        check_and_trigger_reactions(room, idx, proj, scenario)
+        # Cập nhật metrics
+        metrics = calculate_metrics(proj)
+        proj['funding_progress'] = metrics['funding_progress']
+        proj['current_phase'] += 1
+        if proj['current_phase'] >= proj['max_phase']:
+            proj['status'] = 'ended'
+            logs.append(f"  → Dự án {idx+1} kết thúc (đã qua {proj['max_phase']} phases).")
+        logs.append(f"  → Funding sau phase: {proj['funding_progress']*100:.1f}%")
+    
+    # 2. Xử lý bot rút vốn và đầu tư
+    # Tính ma trận attractiveness
+    A = {}
+    for bot in BOTS:
+        for idx, proj in enumerate(players):
+            if not proj or proj.get('status') != 'active' or proj['funding_progress'] >= 1 or proj.get('current_phase',0) >= proj['max_phase']:
+                A[(bot['id'], idx)] = -1e9
+            else:
+                metrics = calculate_metrics(proj)
+                A[(bot['id'], idx)] = attractiveness(proj, bot, metrics)
+    withdraw_logs = process_withdrawals(room, A, phase)
+    invest_logs = process_investments(room, A, phase)
+    logs.extend(withdraw_logs)
+    logs.extend(invest_logs)
+    room['pending_cards'] = {}
+    return logs
+
+def reset_for_next_phase(room):
+    for idx, proj in enumerate(room['players']):
+        if proj and proj.get('status') == 'active' and proj['funding_progress'] < 1 and proj.get('current_phase',0) < proj['max_phase']:
+            deck = proj['active_deck']
+            proj['current_hand'] = random.sample(deck, min(5, len(deck)))
+            proj['energy_left'] = 3
+            room['mulligan_used'][idx] = False
+
+# ===================== KHANH: QUẢN LÝ PHÒNG & API ROUTING =====================
 rooms = {}
 
 @app.route('/')
@@ -263,7 +520,7 @@ def create_room():
         'mulligan_used': [False] * num_players,
         'reaction_hand': [None] * num_players,
         'game_ended': False,
-        'player_triggers': [{} for _ in range(num_players)]   # lưu trigger cho mỗi player
+        'player_triggers': [{} for _ in range(num_players)]
     }
     return jsonify({'room_id': room_id, 'join_links': join_links})
 
@@ -310,8 +567,8 @@ def submit_deck():
     if len(reaction_indices) > 3:
         return jsonify({'error': 'Tối đa 3 reaction cards'}), 400
     proj = room['players'][player_index]
-    proj['active_deck'] = [ALL_ACTIVE_CARDS[i] for i in active_indices]
-    proj['reaction_hand'] = [REACTION_CARDS[i].copy() for i in reaction_indices]   # copy để tránh tham chiếu
+    proj['active_deck'] = [ACTIVE_CARDS_FULL[i] for i in active_indices]
+    proj['reaction_hand'] = [REACTION_CARDS[i].copy() for i in reaction_indices]
     room['player_ready'][player_index] = True
     if all(room['player_ready']):
         max_phase = max(p['max_phase'] for p in room['players'])
@@ -405,7 +662,6 @@ def player_state():
     final_score_value = 0
     if ended:
         final_score_value = final_score(proj, proj['max_phase'], metrics)
-    # Lấy triggers sẵn có cho player này (từ phase vừa rồi)
     triggers = room['player_triggers'][player_index] if player_index < len(room['player_triggers']) else {}
     return jsonify({
         'status': room['status'],
@@ -424,7 +680,7 @@ def player_state():
         'game_ended': room.get('game_ended', False),
         'ended': ended,
         'final_score': final_score_value,
-        'triggers': triggers.get('available_reactions', [])   # danh sách reaction có thể dùng
+        'triggers': triggers.get('available_reactions', [])
     })
 
 @app.route('/api/play_card', methods=['POST'])
@@ -447,7 +703,6 @@ def play_card():
         return jsonify({'error': 'Not enough energy'}), 400
     room['pending_cards'][player_index] = card
     proj['energy_left'] -= cost
-    # Xoá thẻ khỏi hand (theo luật chơi thẻ xong thì biến mất)
     proj['current_hand'].pop(card_index)
     return jsonify({'ok': True})
 
@@ -470,7 +725,6 @@ def mulligan():
     proj['current_hand'] = random.sample(deck, min(3, len(deck)))
     proj['energy_left'] -= 1
     proj['transparency'] = max(0, proj['transparency'] - 2)
-    # Cập nhật trust scores dựa trên transparency (giảm trust do thiếu minh bạch)
     for bid in proj['trust_scores']:
         proj['trust_scores'][bid] = max(0, proj['trust_scores'][bid] - 1)
     room['mulligan_used'][player_index] = True
@@ -494,7 +748,7 @@ def use_reaction():
     data = request.json
     room_id = data['room_id']
     player_index = data['player_index']
-    reaction_index = data['reaction_index']   # chỉ số trong reaction_hand
+    reaction_index = data['reaction_index']
     if room_id not in rooms:
         return jsonify({'error': 'Room not found'}), 404
     room = rooms[room_id]
@@ -504,42 +758,10 @@ def use_reaction():
     if reaction_index >= len(proj.get('reaction_hand', [])):
         return jsonify({'error': 'Invalid reaction'}), 400
     rc = proj['reaction_hand'][reaction_index]
-    # Kiểm tra reaction có nằm trong triggers hiện tại không (optional)
     available_ids = [r['id'] for r in room['player_triggers'][player_index].get('available_reactions', [])]
     if rc['id'] not in available_ids:
         return jsonify({'error': 'Reaction not available now'}), 400
-    # Áp dụng effect
-    eff = rc['effect']
-    if 'transparency' in eff: proj['transparency'] += eff['transparency']
-    if 'hype' in eff: proj['hype'] += eff['hype']
-    if 'runway' in eff:
-        m = calculate_metrics(proj)
-        proj['available_cash'] += eff['runway'] * m['monthly_burn']
-    if 'reg_risk' in eff: 
-        # reg_risk không lưu trực tiếp, nhưng có thể ảnh hưởng qua legal_cost
-        proj['legal_cost_spent'] -= (eff['reg_risk']/100) * proj['target_funding'] if eff['reg_risk']<0 else 0
-    if 'security' in eff: 
-        proj['security'] = max(0, proj.get('security',50) + eff['security'])
-    if 'trust_all' in eff:
-        for bid in proj['trust_scores']:
-            proj['trust_scores'][bid] = clamp(proj['trust_scores'][bid] + eff['trust_all'], 0, 100)
-    if 'whale_trust' in eff:
-        # tăng trust cho các bot loại Whale
-        for bid, bot in enumerate(BOTS):
-            if bot['type'] == 'Whale':
-                proj['trust_scores'][bid] = clamp(proj['trust_scores'][bid] + eff['whale_trust'], 0, 100)
-    if 'trust_single' in eff:
-        # tăng trust cho bot bất kỳ có trust thấp nhất
-        min_bid = min(proj['trust_scores'], key=proj['trust_scores'].get)
-        proj['trust_scores'][min_bid] = clamp(proj['trust_scores'][min_bid] + eff['trust_single'], 0, 100)
-    # Trừ chi phí
-    proj['available_cash'] -= (rc['cost_percent']/100) * proj['target_funding']
-    # Xoá reaction khỏi hand
-    proj['reaction_hand'].pop(reaction_index)
-    # Xoá trigger đó khỏi danh sách (đã dùng)
-    room['player_triggers'][player_index]['available_reactions'] = [
-        r for r in room['player_triggers'][player_index]['available_reactions'] if r['id'] != rc['id']
-    ]
+    apply_reaction_effect(proj, rc, room, player_index)
     return jsonify({'ok': True})
 
 @app.route('/api/run_phase', methods=['POST'])
@@ -554,214 +776,18 @@ def run_phase():
     if not all(room['player_ready']):
         return jsonify({'error': 'Not all players ready'}), 400
     
-    phase = room['phase']
-    players = room['players']
-    logs = []
-    # Reset triggers cho người chơi
-    for i in range(room['num_players']):
-        room['player_triggers'][i] = {'available_reactions': []}
-    
-    # 1. Xử lý scenario và thẻ active
-    for idx, proj in enumerate(players):
-        if not proj or proj.get('current_phase', 0) >= proj['max_phase']:
-            continue
-        # Lấy scenario
-        scenario = random.choice(SCENARIOS)
-        proj['last_scenario'] = scenario['name']
-        logs.append(f"Dự án {idx+1}: {scenario['name']}")
-        d = scenario['delta']
-        if 'price' in d: proj['price'] *= (1 + d['price'])
-        if 'cogs' in d:
-            proj['material'] *= (1 + d['cogs'])
-            proj['packaging'] *= (1 + d['cogs'])
-            proj['shipping'] *= (1 + d['cogs'])
-        if 'hype' in d: proj['hype'] = clamp(proj['hype'] + d['hype'], 0, 100)
-        if 'transparency' in d: proj['transparency'] = clamp(proj['transparency'] + d['transparency'], 0, 100)
-        if 'trust_all' in d:
-            for bid in proj['trust_scores']:
-                proj['trust_scores'][bid] = clamp(proj['trust_scores'][bid] + d['trust_all'], 0, 100)
-        if 'runway' in d:
-            metrics_before = calculate_metrics(proj)
-            proj['available_cash'] += d['runway'] * metrics_before['monthly_burn']
-        if 'legal_cost_percent' in d:
-            cost = (d['legal_cost_percent']/100) * proj['target_funding']
-            proj['legal_cost_spent'] += cost
-            proj['available_cash'] -= cost
-        if 'reg_risk' in d:
-            # reg_risk ảnh hưởng đến legal_cost
-            proj['legal_cost_spent'] += (d['reg_risk']/100) * proj['target_funding']
-        # Áp dụng thẻ active
-        if idx in room['pending_cards']:
-            card = room['pending_cards'][idx]
-            if card:
-                eff = card['effect']
-                if 'hype' in eff: proj['hype'] = clamp(proj['hype'] + eff['hype'], 0, 100)
-                if 'transparency' in eff: proj['transparency'] = clamp(proj['transparency'] + eff['transparency'], 0, 100)
-                if 'price_percent' in eff: proj['price'] *= (1 + eff['price_percent']/100)
-                if 'cogs_percent' in eff:
-                    proj['material'] *= (1 + eff['cogs_percent']/100)
-                    proj['packaging'] *= (1 + eff['cogs_percent']/100)
-                    proj['shipping'] *= (1 + eff['cogs_percent']/100)
-                if 'funding_boost_percent' in eff:
-                    boost = (eff['funding_boost_percent']/100) * proj['target_funding']
-                    proj['total_invested'] += boost
-                    proj['available_cash'] += boost
-                    proj['funding_progress'] = min(1.0, proj['total_invested']/proj['target_funding'])
-                if 'cost_percent' in eff:
-                    proj['available_cash'] -= (eff['cost_percent']/100) * proj['target_funding']
-                if 'halve_negative_delta' in eff:
-                    # Giảm 50% tác động tiêu cực của scenario (đã được xử lý sẵn? Có thể lưu lại)
-                    pass
-                if 'security' in eff:
-                    proj['security'] = clamp(proj.get('security',50) + eff['security'], 0, 100)
-                if 'utility' in eff:
-                    proj['utility'] = clamp(proj.get('utility',50) + eff['utility'], 0, 100)
-                if 'visibility' in eff:
-                    proj['visibility'] = clamp(proj.get('visibility',50) + eff['visibility'], 0, 100)
-                if 'velocity' in eff:
-                    proj['velocity'] = max(0.1, proj.get('velocity',1.0) + eff['velocity'])
-                logs.append(f"  → Dự án {idx+1} chơi thẻ {card['name']}")
-        # 2. Xác định reaction triggers dựa trên scenario và trạng thái
-        triggers = []
-        # Duyệt qua reaction hand của player
-        for rc in proj.get('reaction_hand', []):
-            trigger = rc['trigger']
-            # Kiểm tra điều kiện trigger
-            if trigger == 'on_scenario_market_bad' and scenario['cat'] == 'Market' and any(k in scenario['name'] for k in ['xấu','Khủng hoảng']):
-                triggers.append(rc)
-            elif trigger == 'on_bot_withdraw':  # sẽ kích sau khi bot rút? nhưng rút xảy ra ở cuối phase
-                pass
-            elif trigger == 'on_whale_trust<30':
-                # tính trust trung bình của whale
-                whale_trust = [proj['trust_scores'][bid] for bid, bot in enumerate(BOTS) if bot['type']=='Whale']
-                if whale_trust and sum(whale_trust)/len(whale_trust) < 30:
-                    triggers.append(rc)
-            elif trigger == 'on_transparency<30' and proj['transparency'] < 30:
-                triggers.append(rc)
-            elif trigger == 'on_circuit_breaker':
-                pass
-            elif trigger == 'on_reg_risk>70':
-                # reg_risk thông qua legal_cost_spent
-                reg = (proj['legal_cost_spent'] / proj['target_funding']) * 100 if proj['target_funding']>0 else 0
-                if reg > 70:
-                    triggers.append(rc)
-            elif trigger == 'on_security<30' and proj.get('security',50) < 30:
-                triggers.append(rc)
-            elif trigger == 'on_hype>80' and proj['hype'] > 80:
-                triggers.append(rc)
-            elif trigger == 'on_trust_any_bot<20':
-                if any(t < 20 for t in proj['trust_scores'].values()):
-                    triggers.append(rc)
-            elif trigger == 'on_runway<3':
-                metrics = calculate_metrics(proj)
-                if metrics['runway'] < 3:
-                    triggers.append(rc)
-        if triggers:
-            room['player_triggers'][idx]['available_reactions'] = triggers
-            logs.append(f"  → Dự án {idx+1} có {len(triggers)} reaction có thể kích hoạt")
-        
-        # Cập nhật tiến độ
-        metrics = calculate_metrics(proj)
-        proj['funding_progress'] = metrics['funding_progress']
-        proj['current_phase'] += 1
-        if proj['current_phase'] >= proj['max_phase']:
-            proj['status'] = 'ended'
-            logs.append(f"  → Dự án {idx+1} kết thúc (đã qua {proj['max_phase']} phases).")
-        logs.append(f"  → Funding sau phase: {proj['funding_progress']*100:.1f}%")
-    
-    # 3. Xử lý bot rút vốn và đầu tư (chỉ với dự án active)
-    bot_alloc = room['bot_alloc']
-    A = {}
-    for bot in BOTS:
-        for idx, proj in enumerate(players):
-            if not proj or proj.get('status') != 'active' or proj['funding_progress'] >= 1 or proj.get('current_phase',0) >= proj['max_phase']:
-                A[(bot['id'], idx)] = -1e9
-            else:
-                metrics = calculate_metrics(proj)
-                A[(bot['id'], idx)] = attractiveness(proj, bot, metrics)
-    # Rút vốn
-    for bot in BOTS:
-        best_idx = max(range(len(players)), key=lambda i: A[(bot['id'], i)])
-        alloc_entry = next(entry for entry in bot_alloc if entry['bot_id'] == bot['id'])
-        for idx in range(len(players)):
-            invested = alloc_entry['perProject'][idx]
-            if invested == 0: continue
-            if players[idx].get('status') != 'active' or players[idx].get('current_phase',0) >= players[idx]['max_phase']:
-                continue
-            diff = A[(bot['id'], best_idx)] - A[(bot['id'], idx)]
-            if diff > 15: withdraw_ratio = 1.0
-            elif diff > 5: withdraw_ratio = 0.3
-            else: withdraw_ratio = 0.0
-            if withdraw_ratio > 0:
-                desired = invested * withdraw_ratio
-                max_ratio = min(0.6, 0.2 + (phase-1)*0.05)
-                max_withdraw = invested * max_ratio
-                if desired > max_withdraw:
-                    extra = desired - max_withdraw
-                    actual = max_withdraw + extra*0.5
-                else:
-                    actual = desired
-                if actual <= players[idx]['available_cash']:
-                    players[idx]['available_cash'] -= actual
-                    alloc_entry['perProject'][idx] -= actual
-                    alloc_entry['idle'] += actual
-                    logs.append(f"🐋 Bot {bot['type']} rút {actual:.0f} từ dự án {idx+1}")
-                    # Kiểm tra trigger on_bot_withdraw
-                    for pidx, proj in enumerate(players):
-                        for rc in proj.get('reaction_hand', []):
-                            if rc['trigger'] == 'on_bot_withdraw':
-                                if rc not in room['player_triggers'][pidx]['available_reactions']:
-                                    room['player_triggers'][pidx]['available_reactions'].append(rc)
-                else:
-                    players[idx]['status'] = 'bankrupt'
-                    players[idx]['funding_progress'] = 0
-                    logs.append(f"💀 Dự án {idx+1} PHÁ SẢN!")
-    # Đầu tư softmax
-    for bot in BOTS:
-        alloc_entry = next(entry for entry in bot_alloc if entry['bot_id'] == bot['id'])
-        idle = alloc_entry['idle']
-        if idle <= 0: continue
-        candidates = [i for i,p in enumerate(players) if p and p['status']=='active' and p['funding_progress']<1 and p.get('current_phase',0) < p['max_phase']]
-        if not candidates: continue
-        attrs = [A[(bot['id'], i)] for i in candidates]
-        min_a = min(attrs)
-        shifted = [max(0, a-min_a+0.01) for a in attrs]
-        sum_exp = sum(math.exp(a/20) for a in shifted)
-        probs = [math.exp(a/20)/sum_exp for a in shifted]
-        remaining = idle
-        for _ in range(5):
-            if remaining <= 0: break
-            for j, idx in enumerate(candidates):
-                invest = remaining * probs[j]
-                cap = min(invest, players[idx]['target_funding']*0.25 - players[idx]['total_invested'])
-                if phase == 1:
-                    cap = min(cap, players[idx]['target_funding']*0.2 - players[idx]['total_invested'])
-                if cap > 0:
-                    players[idx]['total_invested'] += cap
-                    players[idx]['available_cash'] += cap
-                    players[idx]['funding_progress'] = min(1.0, players[idx]['total_invested']/players[idx]['target_funding'])
-                    alloc_entry['perProject'][idx] += cap
-                    remaining -= cap
-                    logs.append(f"💸 Bot {bot['type']} đầu tư {cap:.0f} vào dự án {idx+1}")
-        alloc_entry['idle'] = remaining
-    
-    room['pending_cards'] = {}
+    logs = process_phase(room)
     room['player_ready'] = [False] * room['num_players']
     room['phase'] += 1
     room['logs'] = logs
     
-    all_ended = all(p is None or p.get('current_phase',0) >= p['max_phase'] for p in players)
+    all_ended = all(p is None or p.get('current_phase',0) >= p['max_phase'] for p in room['players'])
     game_ended = (room['phase'] > room['max_phase']) or all_ended
     if game_ended:
         room['game_ended'] = True
         room['status'] = 'ended'
     else:
-        for idx, proj in enumerate(players):
-            if proj and proj['status'] == 'active' and proj['funding_progress'] < 1 and proj.get('current_phase',0) < proj['max_phase']:
-                deck = proj['active_deck']
-                proj['current_hand'] = random.sample(deck, min(5, len(deck)))
-                proj['energy_left'] = 3
-                room['mulligan_used'][idx] = False
+        reset_for_next_phase(room)
     return jsonify({
         'ended': game_ended,
         'phase': room['phase'],
@@ -772,13 +798,11 @@ def run_phase():
 @app.route('/api/card_lists', methods=['GET'])
 def card_lists():
     return jsonify({
-        'active': ALL_ACTIVE_CARDS,
+        'active': ACTIVE_CARDS_FULL,
         'reaction': REACTION_CARDS
     })
 
 if __name__ == '__main__':
-    from pyngrok import ngrok
-    # Tạo tunnel http tới cổng 5000
-    public_url = ngrok.connect(5000)
-    print(f" * 🌍 Public URL: {public_url}")
-    app.run(host='0.0.0.0', port=5000)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
