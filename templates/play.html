@@ -62,7 +62,6 @@
                 <div><label>Chi phí cố định, marketing (USD)</label><input type="text" id="fixed" value="12000,7000"></div>
                 <div><label>Vốn góp, vay, lãi suất (%)</label><input type="text" id="capital" value="50000,30000,8"></div>
                 <div><label>% cổ phần (equity offered)</label><input type="number" id="equity" value="15" step="1"></div>
-                <!-- ĐÃ BỎ TOKEN SUPPLY -->
             </div>
             <button type="submit">🚀 GỬI DỰ ÁN</button>
         </form>
@@ -219,6 +218,7 @@
         gameInterval = setInterval(async () => {
             try {
                 const state = await fetch(`/api/player_state?room_id=${roomId}&player_index=${playerIndex}`).then(r=>r.json());
+                console.log('Player state:', state);
                 if (state.game_ended) {
                     clearInterval(gameInterval);
                     document.getElementById('gamePanel').style.display = 'none';
@@ -228,6 +228,7 @@
                     return;
                 }
                 if (state.status === 'playing') {
+                    // Hiển thị game panel
                     document.getElementById('gamePanel').style.display = 'block';
                     document.getElementById('phaseNum').innerText = state.phase;
                     document.getElementById('maxPhasePlayer').innerText = state.max_phase;
@@ -314,11 +315,17 @@
                     } else {
                         document.getElementById('reactionTriggers').innerHTML = '';
                     }
+                } else {
+                    // Nếu chưa ở trạng thái playing, ẩn gamePanel (có thể đang chọn deck)
+                    if (state.status !== 'playing') {
+                        document.getElementById('gamePanel').style.display = 'none';
+                    }
                 }
             } catch (err) {
                 console.error('Polling error:', err);
+                document.getElementById('message').innerHTML = `<div class="error">Lỗi kết nối: ${err.message}</div>`;
             }
-        }, 3000);
+        }, 2000);
     }
 
     document.getElementById('projectForm').addEventListener('submit', async (e) => {
@@ -341,7 +348,6 @@
             fixed_cost: fixed[0], marketing_cost: fixed[1],
             owner_equity: capital[0], loan: capital[1], interest_rate: capital[2],
             equity_offered: parseFloat(document.getElementById('equity').value),
-            // Bỏ các trường token: total_supply_token, utility_list, has_audit, multisig, count_hack_events
             transparency: 50, hype: 50, visibility: 50,
             has_license: false
         };
@@ -423,4 +429,5 @@
 </script>
 </body>
 </html>
+
 
