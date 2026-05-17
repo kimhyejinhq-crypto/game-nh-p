@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Host Startup Game - Quản lý phòng</title>
+    <title>Host Startup Game</title>
     <style>
         * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
         body { background: #0b1120; color: #eef2ff; padding: 20px; margin: 0; }
@@ -13,20 +13,16 @@
         button:hover { background: #be185d; transform: scale(1.02); }
         .flex { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
         .rankings { display: grid; gap: 12px; margin-top: 15px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-        .rank-card { background: #0f172a; border-radius: 20px; padding: 16px; border-left: 4px solid #ec4899; transition: 0.1s; }
+        .rankAC-card { background: #0f172a; border-radius: 20px; padding: 16px; border-left: 4px solid #ec4899; transition: 0.1s; }
         .rank-card h3 { margin: 0 0 8px 0; color: #fbcfe8; }
-        .rank-card.ended { opacity: 0.7; border-left-color: #6b7280; }
-        .logs { background: #00000066; border-radius: 16px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; margin-top: 15px; white-space: pre-wrap; }
+        .logs { background: #00000066; border-radius: 16px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.8rem; margin-top: 15px; white-space: pre-wrap; }
         .link-item { background: #0f172a; padding: 10px 12px; border-radius: 14px; margin-bottom: 8px; word-break: break-all; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .link-item a { color: #ec4899; text-decoration: none; }
-        .copy-link-btn { background: #3b82f6; padding: 4px 12px; font-size: 0.75rem; margin: 0; border-radius: 20px; }
+        .copy-link-btn { background: #3b82f6; padding: 4px 12px; font-size: 0.75rem; margin: 0; }
         .copy-link-btn:hover { background: #2563eb; }
         input, select { background: #0f172a; border: 1px solid #334155; padding: 8px 12px; border-radius: 12px; color: white; margin: 0 5px; }
         label { font-weight: 500; }
-        .error-msg { background: #7f1a1a; padding: 8px; border-radius: 12px; margin-top: 10px; color: #fecaca; }
-        .final-rankings { margin-top: 20px; border-top: 2px solid #ec4899; padding-top: 15px; }
-        .final-rankings h3 { color: #ec4899; }
-        .winner { background: #ec4899; color: #0f172a; padding: 12px; border-radius: 20px; margin-bottom: 20px; text-align: center; font-weight: bold; }
+        .error-msg { color: #f87171; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -38,7 +34,7 @@
             <input type="number" id="numPlayers" min="2" max="10" value="4">
             <button id="createRoomBtn">🚀 Tạo phòng</button>
         </div>
-        <div id="createError" class="error-msg" style="display:none;"></div>
+        <div id="createError" class="error-msg"></div>
     </div>
 
     <div id="gamePanel" style="display:none;" class="panel">
@@ -49,12 +45,12 @@
             <span>👥 Trạng thái: <strong id="playerCount"></strong> / <strong id="maxPlayers"></strong> đã tham gia</span>
             <span>🕒 Phase hiện tại: <strong id="currentPhase">0</strong></span>
         </div>
-        <h3>🏆 BẢNG XẾP HẠNG TRONG GAME</h3>
+        <h3>🏆 BẢNG XẾP HẠNG</h3>
         <div id="rankings" class="rankings">Đang tải...</div>
-        <div id="finalRankings" class="final-rankings" style="display:none;"></div>
         <div id="logsArea" class="logs"></div>
         <div id="phaseControl" style="margin-top: 15px;">
             <button id="runPhaseBtn" style="display:none;">▶ CHẠY PHASE TIẾP THEO</button>
+            <p id="waitingMsg" style="display:none; color: #facc15;">⏳ Đợi tất cả người chơi bấm "SẴN SÀNG"</p>
         </div>
     </div>
 </div>
@@ -65,13 +61,11 @@
 
     document.getElementById('createRoomBtn').onclick = async () => {
         let num = parseInt(document.getElementById('numPlayers').value);
-        const errorDiv = document.getElementById('createError');
-        errorDiv.style.display = 'none';
         if (isNaN(num) || num < 2 || num > 10) {
-            errorDiv.innerText = '❌ Số người chơi phải từ 2 đến 10!';
-            errorDiv.style.display = 'block';
+            document.getElementById('createError').innerText = 'Số người chơi phải từ 2 đến 10';
             return;
         }
+        document.getElementById('createError').innerText = '';
         try {
             let res = await fetch('/api/create_room', {
                 method: 'POST',
@@ -79,16 +73,14 @@
                 body: JSON.stringify({num_players: num})
             });
             let data = await res.json();
-            if (!res.ok || data.error) {
-                throw new Error(data.error || 'Không thể tạo phòng');
-            }
+            if (!res.ok) throw new Error(data.error || 'Không tạo được phòng');
             roomId = data.room_id;
 
             let linksHtml = '';
             data.join_links.forEach((link, idx) => {
                 linksHtml += `<div class="link-item">
                                 🎮 Người chơi ${idx+1}: <a href="${link}" target="_blank">${link}</a>
-                                <button class="copy-link-btn" data-link="${link}">Sao chép</button>
+                                <button class="copy-link-btn" data-link="${link}" style="margin-left: 10px;">Sao chép</button>
                               </div>`;
             });
             document.getElementById('joinLinksList').innerHTML = linksHtml;
@@ -96,7 +88,7 @@
             document.querySelectorAll('.copy-link-btn').forEach(btn => {
                 btn.onclick = () => {
                     const link = btn.getAttribute('data-link');
-                    navigator.clipboard.writeText(link).then(() => alert('✅ Đã sao chép link'));
+                    navigator.clipboard.writeText(link).then(() => alert('Đã sao chép link'));
                 };
             });
 
@@ -106,8 +98,7 @@
             document.getElementById('gamePanel').style.display = 'block';
             startPolling();
         } catch (err) {
-            errorDiv.innerText = '❌ Lỗi: ' + err.message;
-            errorDiv.style.display = 'block';
+            document.getElementById('createError').innerText = err.message;
         }
     };
 
@@ -123,51 +114,46 @@
                 if (state.rankings) {
                     let html = '';
                     state.rankings.forEach(p => {
-                        const endedClass = p.status === 'ended' ? 'ended' : '';
-                        html += `<div class="rank-card ${endedClass}">
+                        let endedClass = p.status === 'ended' ? 'style="opacity:0.6; border-left-color:#6b7280;"' : '';
+                        html += `<div class="rank-card" ${endedClass}>
                             <h3>${p.name}</h3>
                             <div>💰 Funding: ${(p.funding * 100).toFixed(1)}%</div>
                             <div>📊 Hype: ${p.hype} | Transparency: ${p.transparency}</div>
-                            <div>🏅 Điểm tạm thời: ${p.score?.toFixed(2) || '0.00'}</div>
+                            <div>🏅 Điểm: ${p.score?.toFixed(2) || '0.00'}</div>
                             <div>📏 Scale: ${p.scale || '?'} | Phase: ${p.current_phase}/${p.max_phase}</div>
-                            ${p.status === 'ended' ? '<div>✅ Đã kết thúc dự án</div>' : ''}
+                            ${p.status === 'ended' ? '<div>✅ Đã kết thúc</div>' : ''}
                         </div>`;
                     });
                     document.getElementById('rankings').innerHTML = html;
                 }
                 if (state.logs && state.logs.length) {
-                    let logsHtml = state.logs.map(l => `<div>📢 ${l}</div>`).join('');
+                    let logsHtml = state.logs.map(l => `<div>${l}</div>`).join('');
                     document.getElementById('logsArea').innerHTML = logsHtml;
                     let logsDiv = document.getElementById('logsArea');
                     logsDiv.scrollTop = logsDiv.scrollHeight;
                 }
                 if (state.status === 'playing') {
                     let btn = document.getElementById('runPhaseBtn');
-                    btn.style.display = state.all_ready ? 'inline-block' : 'none';
-                    btn.innerText = `▶ CHẠY PHASE ${state.phase}`;
+                    let waitingMsg = document.getElementById('waitingMsg');
+                    if (state.all_ready) {
+                        btn.style.display = 'inline-block';
+                        waitingMsg.style.display = 'none';
+                        btn.innerText = `▶ CHẠY PHASE ${state.phase}`;
+                    } else {
+                        btn.style.display = 'none';
+                        waitingMsg.style.display = 'block';
+                        waitingMsg.innerText = `⏳ Đợi tất cả người chơi bấm "SẴN SÀNG" (phase ${state.phase})`;
+                    }
                 } else if (state.status === 'ended') {
                     document.getElementById('runPhaseBtn').style.display = 'none';
-                    if (!document.getElementById('finalRankings').innerHTML) {
-                        // Hiển thị bảng xếp hạng cuối cùng
-                        let finalHtml = '<h3>🏆 KẾT QUẢ CHUNG CUỘC 🏆</h3>';
-                        const rankings = state.rankings;
-                        // Lọc những người chơi đã tham gia
-                        const activeRankings = rankings.filter(p => p.name && p.funding !== undefined);
-                        const sorted = [...activeRankings].sort((a,b) => b.score - a.score);
-                        if (sorted.length > 0) {
-                            const winner = sorted[0];
-                            finalHtml += `<div class="winner">🥇 CHIẾN THẮNG: ${winner.name} với ${winner.score.toFixed(2)} điểm</div>`;
-                        }
-                        finalHtml += '<ol style="margin-top: 10px;">';
-                        sorted.forEach((p, idx) => {
-                            finalHtml += `<li><strong>${p.name}</strong> - Điểm: ${p.score.toFixed(2)} (Funding: ${(p.funding*100).toFixed(1)}%)</li>`;
-                        });
-                        finalHtml += '</ol>';
-                        document.getElementById('finalRankings').innerHTML = finalHtml;
-                        document.getElementById('finalRankings').style.display = 'block';
+                    document.getElementById('waitingMsg').style.display = 'none';
+                    if (state.game_ended) {
+                        alert('🏆 Game đã kết thúc! 🏆');
+                        clearInterval(interval);
                     }
                 } else {
                     document.getElementById('runPhaseBtn').style.display = 'none';
+                    document.getElementById('waitingMsg').style.display = 'none';
                 }
             } catch (err) {
                 console.error('Polling error:', err);
@@ -183,14 +169,13 @@
                 body: JSON.stringify({room_id: roomId})
             });
             let data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Lỗi khi chạy phase');
             if (data.ended) {
-                // Game sẽ kết thúc, polling sẽ hiển thị kết quả
-                alert('🏆 GAME ĐÃ KẾT THÚC! Xem bảng xếp hạng phía dưới. 🏆');
+                alert('🏆 GAME KẾT THÚC! 🏆');
                 clearInterval(interval);
-                startPolling(); // restart để lấy trạng thái ended
             } else {
                 document.getElementById('runPhaseBtn').style.display = 'none';
+                document.getElementById('waitingMsg').style.display = 'block';
+                document.getElementById('waitingMsg').innerText = `⏳ Đợi người chơi ready cho phase tiếp theo...`;
             }
         } catch (err) {
             alert('Lỗi chạy phase: ' + err.message);
@@ -199,4 +184,5 @@
 </script>
 </body>
 </html>
+
 
