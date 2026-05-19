@@ -52,195 +52,66 @@
             margin: 0 5px;
             font-weight: 500;
         }
-        input:focus, select:focus {
-            outline: none;
-            ring: 2px solid #b77eff;
-            border-color: #b77eff;
-            box-shadow: 0 0 0 2px rgba(183,126,255,0.3);
-        }
-        .rankings { 
-            display: grid; 
-            gap: 14px; 
-            margin-top: 15px; 
-        }
-        .rank-card { 
-            background: rgba(255, 255, 255, 0.85);
-            border-radius: 1.2rem; 
-            padding: 14px; 
-            border-left: 4px solid #ec4899;
-            transition: all 0.2s;
-        }
-        .player-card-joined { 
-            background: rgba(34, 197, 94, 0.12);
-            border-left-color: #22c55e;
-        }
-        .player-card-not-joined {
-            background: #ffffffdd;
-            border-left-color: #94a3b8;
-        }
-        .player-card-ended {
-            background: rgba(245, 158, 11, 0.12);
-            border-left-color: #f59e0b;
-        }
-        .player-join-tag {
-            display: inline-block;
-            margin-left: 10px;
-            padding: 3px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-        }
+        .rankings { display: grid; gap: 14px; margin-top: 15px; }
+        .rank-card { background: rgba(255,255,255,0.85); border-radius: 1.2rem; padding: 14px; border-left: 4px solid #ec4899; }
+        .player-card-joined { background: rgba(34,197,94,0.12); border-left-color: #22c55e; }
+        .player-card-not-joined { background: #ffffffdd; border-left-color: #94a3b8; }
+        .player-card-ended { background: rgba(245,158,11,0.12); border-left-color: #f59e0b; }
+        .player-join-tag { display: inline-block; margin-left: 10px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
         .player-join-tag.joined { background: #16a34a; color: white; }
         .player-join-tag.waiting { background: #cbd5e1; color: #1e293b; }
-        .join-status-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .player-funding {
-            font-size: 18px;
-            font-weight: 700;
-            color: #f59e0b;
-            margin-bottom: 6px;
-        }
-        .player-metric-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin: 10px 0 6px;
-        }
-        .metric-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            font-size: 13px;
-            font-weight: 600;
-            background: #f3e5ff;
-            color: #4a2b7a;
-            border: 1px solid #e2c6ff;
-        }
-        .metric-tag.hype-tag { background: rgba(59, 130, 246, 0.15); color: #2563eb; border-color: rgba(59, 130, 246, 0.3); }
-        .metric-tag.transparency-tag { background: rgba(16, 185, 129, 0.12); color: #059669; border-color: rgba(16, 185, 129, 0.3); }
-        .metric-tag.score-tag { background: rgba(168, 85, 247, 0.12); color: #7c3aed; border-color: rgba(168, 85, 247, 0.3); }
-        .metric-tag.status-tag { background: rgba(148, 163, 184, 0.14); color: #475569; border-color: rgba(148, 163, 184, 0.3); }
-        .funding-bar {
-            width: 100%;
-            height: 10px;
-            background: #e2d4f0;
-            border-radius: 999px;
-            overflow: hidden;
-            margin-top: 4px;
-        }
-        .funding-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #facc15 0%, #f59e0b 100%);
-            border-radius: 999px;
-            transition: width 0.2s ease;
-        }
-        .join-status-tag.joined { background: #16a34a; color: white; }
-        .join-status-tag.waiting { background: #cbd5e1; color: #1e293b; }
-        .logs { 
-            background: rgba(0, 0, 0, 0.06);
-            border-radius: 1rem; 
-            padding: 14px; 
-            max-height: 300px; 
-            overflow-y: auto; 
-            font-family: 'SF Mono', monospace; 
-            font-size: 13px; 
-            margin-top: 15px;
-            border: 1px solid #e2d4f0;
-        }
+        .join-status-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .player-funding { font-size: 18px; font-weight: 700; color: #f59e0b; margin-bottom: 6px; }
+        .player-metric-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
+        .metric-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #f3e5ff; color: #4a2b7a; border: 1px solid #e2c6ff; }
+        .metric-tag.hype-tag { background: rgba(59,130,246,0.15); color: #2563eb; }
+        .metric-tag.transparency-tag { background: rgba(16,185,129,0.12); color: #059669; }
+        .metric-tag.score-tag { background: rgba(168,85,247,0.12); color: #7c3aed; }
+        .funding-bar { width: 100%; height: 10px; background: #e2d4f0; border-radius: 999px; overflow: hidden; margin-top: 4px; }
+        .funding-bar-fill { height: 100%; background: linear-gradient(90deg, #facc15, #f59e0b); border-radius: 999px; transition: width 0.2s; }
+        .logs { background: rgba(0,0,0,0.06); border-radius: 1rem; padding: 14px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; margin-top: 15px; }
         .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .link-item { 
-            background: rgba(255, 255, 255, 0.7);
-            padding: 12px; 
-            border-radius: 16px; 
-            margin-bottom: 8px; 
-            word-break: break-all; 
-        }
         .success { color: #16a34a; font-weight: 700; }
         .error { color: #dc2626; font-weight: 700; }
-        .loading-placeholder {
-            background: rgba(236, 72, 153, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 500;
-            color: #9d4edd;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
-        }
-        .section-panel {
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 1.2rem;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(210, 180, 255, 0.5);
-        }
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 18px;
-            font-weight: 600;
-        }
-        h2, h3 { color: #2e1a47; letter-spacing: -0.2px; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #edd9ff; border-radius: 20px; }
-        ::-webkit-scrollbar-thumb { background: #a569e6; border-radius: 20px; }
-        .floating-switch {
-            position: fixed; bottom: 20px; right: 20px; z-index: 1000;
-        }
-        .data-empty {
-            color: #94a3b8;
-            text-align: center;
-            padding: 20px;
-            font-style: italic;
-        }
+        .loading-placeholder { background: rgba(236,72,153,0.1); border-radius: 16px; padding: 12px; text-align: center; font-size: 14px; font-weight: 500; color: #9d4edd; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+        .section-panel { background: rgba(255,255,255,0.7); border-radius: 1.2rem; padding: 20px; margin-bottom: 20px; }
+        .section-header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; font-weight: 600; }
+        h2, h3 { color: #2e1a47; }
+        .floating-switch { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+        .data-empty { color: #94a3b8; text-align: center; padding: 20px; font-style: italic; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="panel">
         <h2>✨ Fun(d) raising - When you have funds you have fun ✨</h2>
-        <div class="loading-placeholder" id="connectionStatus">
-            🔌 Đang kết nối đến Backend...
-        </div>
+        <div class="loading-placeholder" id="connectionStatus">🔌 Đang kết nối đến Backend...</div>
     </div>
 
     <!-- ROOM SETUP -->
     <div class="panel" id="setupPanel">
         <h2>🎮 Create New Room (Host)</h2>
         <div class="flex">
-            <label style="color:#2e1a47; font-weight:600;">🏷️ Room name:</label>
+            <label>🏷️ Room name:</label>
             <input type="text" id="roomName" placeholder="e.g. Startup F2025" value="Startup Arena">
-            <label style="color:#2e1a47; font-weight:600;">👥 Players:</label>
+            <label>👥 Players:</label>
             <input type="number" id="numPlayers" min="2" max="10" value="4">
             <button onclick="createRoom()">🚀 CREATE ROOM & START GAME</button>
         </div>
         <div style="margin-top: 12px; font-size:13px; color:#6b21a5;">⚡ Sau khi tạo phòng, mỗi người chơi có link riêng để tham gia.</div>
     </div>
 
-    <!-- GAME PANEL (MAIN DASHBOARD) -->
+    <!-- GAME PANEL -->
     <div class="panel" id="gamePanel" style="display:none;">
-        <h2>🏠 <span id="roomNameDisplay">---</span> · Room ID: <span id="roomId">---</span></h2>
+        <div class="flex" style="justify-content: space-between;">
+            <h2>🏠 <span id="roomNameDisplay">---</span> · Room ID: <span id="roomId">---</span></h2>
+            <button onclick="resetToSetup()" style="background: #6c757d;">➕ CREATE NEW ROOM</button>
+        </div>
 
         <div class="section-panel">
             <h3>🔗 Player Join Links</h3>
-            <div id="joinLinksList" class="link-item" style="background: transparent; padding: 0;">
-                <div class="loading-placeholder">Đang tải link tham gia...</div>
-            </div>
+            <div id="joinLinksList" class="link-item" style="background: transparent; padding: 0;"></div>
         </div>
 
         <div class="section-panel">
@@ -248,34 +119,28 @@
             <div class="section-header">
                 <span>👥 <strong><span id="playerCount">0</span> / <span id="maxPlayers">0</span></strong> joined</span>
                 <span>🕒 Phase: <strong><span id="currentPhase">-</span></strong> / <strong><span id="maxPhase">-</span></strong></span>
-                <span>🎯 Status: <strong><span id="gameStatus" class="loading-placeholder" style="display:inline-block; padding:2px 12px;">Đang tải...</span></strong></span>
+                <span>🎯 Status: <strong><span id="gameStatus">Đang tải...</span></strong></span>
             </div>
-            <div class="flex" style="gap: 12px; margin-bottom: 18px;">
-                <label for="phaseSelect" style="color:#2e1a47; font-weight:600;">📜 Phase archive:</label>
-                <select id="phaseSelect" onchange="showPhaseDetails()">
-                    <option>-- Chưa có dữ liệu --</option>
-                </select>
+            <div class="flex">
+                <label>📜 Phase archive:</label>
+                <select id="phaseSelect" onchange="showPhaseDetails()"><option>-- Chưa có dữ liệu --</option></select>
             </div>
-            <div id="phaseDetails" class="panel" style="background: rgba(245,240,255,0.5);">
+            <div id="phaseDetails" class="panel" style="background: rgba(245,240,255,0.5); margin-top: 12px;">
                 <div class="data-empty">📌 Chọn một phase để xem chi tiết</div>
             </div>
         </div>
 
         <div class="section-panel">
             <h3>📜 Event Log</h3>
-            <div id="logsArea" class="logs">
-                <div class="data-empty">⏳ Chưa có sự kiện nào</div>
-            </div>
+            <div id="logsArea" class="logs"><div class="data-empty">⏳ Chưa có sự kiện nào</div></div>
         </div>
 
         <div class="section-panel">
             <h3>🏆 Leaderboard & Metrics</h3>
-            <div id="rankings" class="rankings">
-                <div class="loading-placeholder">Đang tải dữ liệu người chơi...</div>
-            </div>
+            <div id="rankings" class="rankings"><div class="loading-placeholder">Đang tải dữ liệu...</div></div>
         </div>
 
-        <div class="flex" style="justify-content: flex-start; gap: 12px; flex-wrap: wrap; margin-top: 8px;">
+        <div class="flex">
             <button onclick="nextPhase()" id="runPhaseBtn" disabled>▶ NEXT PHASE</button>
             <button onclick="addRandomEvent()" id="eventBtn" disabled>🎲 ADD RANDOM EVENT</button>
             <button onclick="resetCurrentPhase()" id="resetPhaseBtn" disabled>🔄 RESET CURRENT PHASE</button>
@@ -286,216 +151,177 @@
 </div>
 
 <div class="floating-switch">
-    <button onclick="toggleView()" style="background: linear-gradient(95deg, #f48fb1, #ba6bff, #5e9bff); padding: 8px 20px;">
-        👤 Switch to Player View
-    </button>
+    <button onclick="toggleView()">👤 Switch to Player View</button>
 </div>
 
 <script>
-    // ==================== BACKEND CONFIGURATION ====================
     const API_BASE_URL = window.location.origin + '/api';
-    console.log('API_BASE_URL:', API_BASE_URL);
-    
     let currentRoomId = null;
     let pollingInterval = null;
-    let isConnected = false;
 
-    // Hiển thị trạng thái kết nối
     function updateConnectionStatus(connected, message) {
-        const statusDiv = document.getElementById('connectionStatus');
+        const div = document.getElementById('connectionStatus');
         if (connected) {
-            statusDiv.innerHTML = '✅ Đã kết nối đến Backend | Dữ liệu real-time';
-            statusDiv.style.background = 'rgba(34, 197, 94, 0.15)';
-            statusDiv.style.color = '#16a34a';
-            isConnected = true;
+            div.innerHTML = '✅ Đã kết nối đến Backend | Dữ liệu real-time';
+            div.style.background = 'rgba(34,197,94,0.15)';
+            div.style.color = '#16a34a';
         } else {
-            statusDiv.innerHTML = `⚠️ ${message || 'Không thể kết nối đến Backend'}<br><small>Vui lòng kiểm tra API URL: ${API_BASE_URL}</small>`;
-            statusDiv.style.background = 'rgba(220, 38, 38, 0.15)';
-            statusDiv.style.color = '#dc2626';
-            isConnected = false;
+            div.innerHTML = `⚠️ ${message || 'Không thể kết nối'}<br><small>Vui lòng kiểm tra API URL: ${API_BASE_URL}</small>`;
+            div.style.background = 'rgba(220,38,38,0.15)';
+            div.style.color = '#dc2626';
         }
     }
 
-    // Gọi API lấy dữ liệu phòng hiện tại
     async function fetchRoomData() {
         if (!currentRoomId) return null;
         try {
-            const response = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const data = await response.json();
-            updateConnectionStatus(true, 'Connected');
+            const res = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            updateConnectionStatus(true);
             return data;
-        } catch (error) {
-            console.error('Fetch room data error:', error);
-            updateConnectionStatus(false, error.message);
+        } catch (err) {
+            console.error(err);
+            updateConnectionStatus(false, err.message);
             return null;
         }
     }
 
-    // Tạo phòng mới qua API
     async function createRoom() {
         const roomName = document.getElementById('roomName').value.trim() || 'Startup Game';
         const numPlayers = parseInt(document.getElementById('numPlayers').value, 10);
-        
-        if (numPlayers < 2 || numPlayers > 10) {
-            alert('Số lượng người chơi phải từ 2 đến 10');
-            return;
-        }
+        if (numPlayers < 2 || numPlayers > 10) { alert('Số người chơi từ 2 đến 10'); return; }
 
-        const createBtn = event.target;
-        const originalText = createBtn.innerText;
-        createBtn.innerText = '⏳ Đang tạo...';
-        createBtn.disabled = true;
+        const btn = event.target;
+        const original = btn.innerText;
+        btn.innerText = '⏳ Đang tạo...';
+        btn.disabled = true;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/rooms`, {
+            const res = await fetch(`${API_BASE_URL}/rooms`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: roomName,
-                    maxPlayers: numPlayers
-                })
+                body: JSON.stringify({ name: roomName, maxPlayers: numPlayers })
             });
-            
-            if (!response.ok) throw new Error(`Tạo phòng thất bại: ${response.status}`);
-            
-            const roomData = await response.json();
-            currentRoomId = roomData.id;
-            
+            if (!res.ok) throw new Error(`Tạo phòng thất bại: ${res.status}`);
+            const data = await res.json();
+            currentRoomId = data.id;
             sessionStorage.setItem('currentRoomId', currentRoomId);
-            
+
             document.getElementById('setupPanel').style.display = 'none';
             document.getElementById('gamePanel').style.display = 'block';
             document.getElementById('roomId').innerText = currentRoomId;
-            document.getElementById('roomNameDisplay').innerText = roomData.name || roomName;
-            document.getElementById('maxPlayers').innerText = roomData.maxPlayers || numPlayers;
-            
+            document.getElementById('roomNameDisplay').innerText = data.name || roomName;
+            document.getElementById('maxPlayers').innerText = data.maxPlayers || numPlayers;
+
             startPolling();
-            
-            alert(`✅ Phòng "${roomName}" đã được tạo thành công!\nRoom ID: ${currentRoomId}`);
-        } catch (error) {
-            console.error('Create room error:', error);
-            alert(`❌ Không thể tạo phòng: ${error.message}\nVui lòng kiểm tra kết nối đến Backend.`);
-            updateConnectionStatus(false, error.message);
+            alert(`✅ Phòng "${roomName}" tạo thành công!\nRoom ID: ${currentRoomId}`);
+        } catch (err) {
+            alert(`❌ Lỗi: ${err.message}`);
+            updateConnectionStatus(false, err.message);
         } finally {
-            createBtn.innerText = originalText;
-            createBtn.disabled = false;
+            btn.innerText = original;
+            btn.disabled = false;
         }
+    }
+
+    function resetToSetup() {
+        if (pollingInterval) clearInterval(pollingInterval);
+        currentRoomId = null;
+        sessionStorage.removeItem('currentRoomId');
+        document.getElementById('gamePanel').style.display = 'none';
+        document.getElementById('setupPanel').style.display = 'block';
+        document.getElementById('roomName').value = 'Startup Arena';
+        document.getElementById('numPlayers').value = 4;
     }
 
     function startPolling() {
         if (pollingInterval) clearInterval(pollingInterval);
         fetchAndUpdateUI();
-        pollingInterval = setInterval(() => {
-            if (currentRoomId) {
-                fetchAndUpdateUI();
-            }
-        }, 2000);
+        pollingInterval = setInterval(() => { if (currentRoomId) fetchAndUpdateUI(); }, 2000);
     }
 
     async function fetchAndUpdateUI() {
-        const roomData = await fetchRoomData();
-        if (roomData) {
-            renderGameData(roomData);
-        }
+        const data = await fetchRoomData();
+        if (data) renderGameData(data);
     }
 
     function renderGameData(roomData) {
         if (!roomData) return;
-
         document.getElementById('roomNameDisplay').innerText = roomData.name || 'Game Room';
         document.getElementById('playerCount').innerText = roomData.joinedPlayers || 0;
         document.getElementById('maxPlayers').innerText = roomData.maxPlayers || '?';
         document.getElementById('currentPhase').innerText = roomData.currentPhase ?? '?';
         document.getElementById('maxPhase').innerText = roomData.maxPhase ?? 7;
-        
-        const gameStatusSpan = document.getElementById('gameStatus');
-        if (roomData.ended) {
-            gameStatusSpan.innerHTML = '🏁 ENDED';
-            gameStatusSpan.className = 'error';
-        } else if (roomData.currentPhase >= roomData.maxPhase) {
-            gameStatusSpan.innerHTML = '🏆 COMPLETED';
-            gameStatusSpan.className = 'error';
-        } else {
-            gameStatusSpan.innerHTML = '🔥 IN PROGRESS';
-            gameStatusSpan.className = 'success';
-        }
 
-        const isGameActive = !roomData.ended && roomData.currentPhase < roomData.maxPhase;
-        document.getElementById('runPhaseBtn').disabled = !isGameActive;
-        document.getElementById('eventBtn').disabled = !isGameActive;
-        document.getElementById('resetPhaseBtn').disabled = !isGameActive;
+        const statusSpan = document.getElementById('gameStatus');
+        if (roomData.ended) { statusSpan.innerHTML = '🏁 ENDED'; statusSpan.className = 'error'; }
+        else if (roomData.currentPhase >= roomData.maxPhase) { statusSpan.innerHTML = '🏆 COMPLETED'; statusSpan.className = 'error'; }
+        else { statusSpan.innerHTML = '🔥 IN PROGRESS'; statusSpan.className = 'success'; }
+
+        const active = !roomData.ended && roomData.currentPhase < roomData.maxPhase;
+        document.getElementById('runPhaseBtn').disabled = !active;
+        document.getElementById('eventBtn').disabled = !active;
+        document.getElementById('resetPhaseBtn').disabled = !active;
         document.getElementById('endGameBtn').disabled = roomData.ended;
-        document.getElementById('resetGameBtn').disabled = false;
 
-        if (roomData.players && roomData.players.length > 0) {
-            const sorted = [...roomData.players].sort((a, b) => (b.score || 0) - (a.score || 0));
-            let rankingsHtml = '';
-            sorted.forEach((player, idx) => {
-                const isJoined = player.status === 'active';
-                const isEnded = player.status === 'ended';
+        // Rankings
+        if (roomData.players && roomData.players.length) {
+            const sorted = [...roomData.players].sort((a,b) => (b.score||0)-(a.score||0));
+            let html = '';
+            sorted.forEach((p, idx) => {
+                const isJoined = p.status === 'active';
+                const isEnded = p.status === 'ended';
                 const cardClass = isJoined ? 'player-card-joined' : (isEnded ? 'player-card-ended' : 'player-card-not-joined');
-                const statusLabel = isJoined ? 'Active' : (isEnded ? 'Finished' : 'Not Joined');
-                const fundingPercent = ((player.funding || 0) * 100).toFixed(1);
-                
-                rankingsHtml += `
-                    <div class="rank-card ${cardClass}">
-                        <h3 style="color:#2e1a47;">${idx+1}. ${player.name || `Player ${player.id}`}
-                            <span class="player-join-tag ${isJoined ? 'joined' : (isEnded ? 'joined' : 'waiting')}">${statusLabel}</span>
-                        </h3>
-                        <div class="player-funding">💰 Funding: <span>${fundingPercent}%</span></div>
-                        <div class="funding-bar"><div class="funding-bar-fill" style="width: ${fundingPercent}%;"></div></div>
-                        <div class="player-metric-list">
-                            <span class="metric-tag hype-tag">📈 Hype ${player.hype ?? 0}</span>
-                            <span class="metric-tag transparency-tag">🔍 Transparency ${player.transparency ?? 0}</span>
-                            <span class="metric-tag score-tag">🏅 Score ${(player.score || 0).toFixed(2)}</span>
-                            <span class="metric-tag status-tag">📌 ${player.status === 'active' ? 'Playing' : (player.status === 'ended' ? 'Done' : 'Pending')}</span>
-                        </div>
+                const fundingPercent = ((p.funding||0)*100).toFixed(1);
+                html += `<div class="rank-card ${cardClass}">
+                    <h3>${idx+1}. ${p.name || `Player ${p.id}`}
+                        <span class="player-join-tag ${isJoined ? 'joined' : (isEnded ? 'joined' : 'waiting')}">${isJoined ? 'Active' : (isEnded ? 'Finished' : 'Not Joined')}</span>
+                    </h3>
+                    <div class="player-funding">💰 Funding: ${fundingPercent}%</div>
+                    <div class="funding-bar"><div class="funding-bar-fill" style="width: ${fundingPercent}%;"></div></div>
+                    <div class="player-metric-list">
+                        <span class="metric-tag hype-tag">📈 Hype ${p.hype??0}</span>
+                        <span class="metric-tag transparency-tag">🔍 Transparency ${p.transparency??0}</span>
+                        <span class="metric-tag score-tag">🏅 Score ${(p.score||0).toFixed(2)}</span>
                     </div>
-                `;
+                </div>`;
             });
-            document.getElementById('rankings').innerHTML = rankingsHtml;
+            document.getElementById('rankings').innerHTML = html;
         } else {
             document.getElementById('rankings').innerHTML = '<div class="data-empty">👥 Chưa có người chơi nào tham gia</div>';
         }
 
-        if (roomData.logs && roomData.logs.length > 0) {
-            const logsHtml = [...roomData.logs].reverse().map(log => `<div>📌 ${log}</div>`).join('');
-            document.getElementById('logsArea').innerHTML = logsHtml;
+        // Logs
+        if (roomData.logs && roomData.logs.length) {
+            document.getElementById('logsArea').innerHTML = [...roomData.logs].reverse().map(l => `<div>📌 ${l}</div>`).join('');
         } else {
             document.getElementById('logsArea').innerHTML = '<div class="data-empty">📭 Chưa có sự kiện nào</div>';
         }
 
-        if (roomData.joinLinks && roomData.joinLinks.length > 0) {
-            let linksHtml = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+        // Join links
+        if (roomData.joinLinks && roomData.joinLinks.length) {
+            let linksHtml = '<div style="display:flex; flex-direction:column; gap:12px;">';
             roomData.joinLinks.forEach(link => {
                 const player = roomData.players?.find(p => p.id === link.playerIndex);
                 const isJoined = player && player.status !== 'not_joined';
-                linksHtml += `
-                    <div style="background: rgba(255, 255, 255, 0.85); border-radius: 16px; padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                        <div>
-                            <span style="font-weight: 800; color:#db2777;">${link.playerName}</span>
-                            <span class="join-status-tag ${isJoined ? 'joined' : 'waiting'}">${isJoined ? '✅ Joined' : '⌛ Waiting'}</span>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" value="${link.realLink}" style="background:#f3e8ff; font-size:12px; width: 260px;" readonly>
-                            <button onclick="copyToClipboard('${link.realLink}')">Copy</button>
-                        </div>
-                    </div>
-                `;
+                linksHtml += `<div style="background:rgba(255,255,255,0.85); border-radius:16px; padding:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+                    <div><span style="font-weight:800; color:#db2777;">${link.playerName}</span>
+                    <span class="join-status-tag ${isJoined ? 'joined' : 'waiting'}">${isJoined ? '✅ Joined' : '⌛ Waiting'}</span></div>
+                    <div><input type="text" value="${link.realLink}" style="background:#f3e8ff; font-size:12px; width:260px;" readonly>
+                    <button onclick="copyToClipboard('${link.realLink}')">Copy</button></div>
+                </div>`;
             });
             linksHtml += '</div>';
             document.getElementById('joinLinksList').innerHTML = linksHtml;
         } else {
-            document.getElementById('joinLinksList').innerHTML = '<div class="data-empty">🔗 Chưa có link tham gia. Vui lòng tạo phòng lại.</div>';
+            document.getElementById('joinLinksList').innerHTML = '<div class="data-empty">🔗 Chưa có link tham gia.</div>';
         }
 
-        if (roomData.phaseDetails && roomData.phaseDetails.length > 0) {
+        if (roomData.phaseDetails && roomData.phaseDetails.length) {
             const select = document.getElementById('phaseSelect');
-            select.innerHTML = roomData.phaseDetails.map(d => `<option value="${d.phase}">🏁 Phase ${d.phase} (${d.date || ''})</option>`).join('');
-            if (roomData.phaseDetails.length > 0) {
-                showPhaseDetailsFromData(roomData);
-            }
+            select.innerHTML = roomData.phaseDetails.map(d => `<option value="${d.phase}">🏁 Phase ${d.phase} (${d.date||''})</option>`).join('');
+            if (roomData.phaseDetails.length) showPhaseDetailsFromData(roomData);
         }
     }
 
@@ -505,117 +331,64 @@
         const phaseNum = parseInt(select.value, 10);
         const detail = roomData.phaseDetails.find(d => d.phase === phaseNum);
         const container = document.getElementById('phaseDetails');
-        if (!detail) {
-            container.innerHTML = '<div class="data-empty">📌 Chọn phase để xem chi tiết</div>';
-            return;
-        }
-        container.innerHTML = `
-            <div><strong>📌 PHASE ${detail.phase}</strong> · ${detail.date || ''}</div>
-            <div style="margin: 8px 0;"><em>${detail.event || 'Không có mô tả'}</em></div>
-            <div style="display:grid; gap:10px; margin-top: 12px;">
-                ${(detail.players || []).map(p => `
-                    <div style="background: rgba(245,240,255,0.7); border-radius: 14px; padding: 10px; display: flex; justify-content: space-between; flex-wrap: wrap;">
-                        <div><strong>${p.name}</strong> <span style="color:#6b21a5;">${p.status}</span></div>
-                        <div style="display: flex; gap: 8px;">
-                            <span class="metric-tag">💰 ${((p.funding||0)*100).toFixed(0)}%</span>
-                            <span class="metric-tag hype-tag">📈 ${p.hype || 0}</span>
-                            <span class="metric-tag score-tag">🏅 ${(p.score||0).toFixed(2)}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        if (!detail) { container.innerHTML = '<div class="data-empty">📌 Chọn phase để xem chi tiết</div>'; return; }
+        container.innerHTML = `<div><strong>📌 PHASE ${detail.phase}</strong> · ${detail.date||''}</div>
+            <div style="margin:8px 0;"><em>${detail.event||'Không có mô tả'}</em></div>
+            <div style="display:grid; gap:10px;">${(detail.players||[]).map(p => `
+                <div style="background:rgba(245,240,255,0.7); border-radius:14px; padding:10px; display:flex; justify-content:space-between;">
+                    <div><strong>${p.name}</strong> <span style="color:#6b21a5;">${p.status}</span></div>
+                    <div><span class="metric-tag">💰 ${((p.funding||0)*100).toFixed(0)}%</span>
+                    <span class="metric-tag hype-tag">📈 ${p.hype||0}</span>
+                    <span class="metric-tag score-tag">🏅 ${(p.score||0).toFixed(2)}</span></div>
+                </div>`).join('')}</div>`;
     }
 
-    function showPhaseDetails() {
-        if (currentRoomId) fetchAndUpdateUI();
-    }
+    function showPhaseDetails() { if (currentRoomId) fetchAndUpdateUI(); }
 
     async function nextPhase() {
         if (!currentRoomId) return;
         try {
-            const response = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/next-phase`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!response.ok) throw new Error('Cannot advance phase');
+            const res = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/next-phase`, { method: 'POST' });
+            if (!res.ok) throw new Error('Cannot advance phase');
             await fetchAndUpdateUI();
-        } catch (error) {
-            alert(`❌ Lỗi: ${error.message}`);
-        }
+        } catch (err) { alert(`❌ Lỗi: ${err.message}`); }
     }
-
     async function addRandomEvent() {
         if (!currentRoomId) return;
         try {
-            const response = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/random-event`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!response.ok) throw new Error('Cannot add event');
+            const res = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/random-event`, { method: 'POST' });
+            if (!res.ok) throw new Error('Cannot add event');
             await fetchAndUpdateUI();
-        } catch (error) {
-            alert(`❌ Lỗi: ${error.message}`);
-        }
+        } catch (err) { alert(`❌ Lỗi: ${err.message}`); }
     }
-
     async function resetCurrentPhase() {
         if (!currentRoomId) return;
         try {
-            const response = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/reset-phase`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!response.ok) throw new Error('Cannot reset phase');
+            const res = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/reset-phase`, { method: 'POST' });
+            if (!res.ok) throw new Error('Cannot reset phase');
             await fetchAndUpdateUI();
-        } catch (error) {
-            alert(`❌ Lỗi: ${error.message}`);
-        }
+        } catch (err) { alert(`❌ Lỗi: ${err.message}`); }
     }
-
     async function endGame() {
         if (!currentRoomId) return;
-        if (confirm('Bạn có chắc muốn kết thúc game ngay bây giờ?')) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/end`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Cannot end game');
-                await fetchAndUpdateUI();
-            } catch (error) {
-                alert(`❌ Lỗi: ${error.message}`);
-            }
-        }
+        if (!confirm('Kết thúc game ngay?')) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/end`, { method: 'POST' });
+            if (!res.ok) throw new Error('Cannot end game');
+            await fetchAndUpdateUI();
+        } catch (err) { alert(`❌ Lỗi: ${err.message}`); }
     }
-
     async function resetGame() {
         if (!currentRoomId) return;
-        if (confirm('RESET toàn bộ game? Dữ liệu hiện tại sẽ bị mất.')) {
-            try {
-                const response = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/reset`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Cannot reset game');
-                await fetchAndUpdateUI();
-            } catch (error) {
-                alert(`❌ Lỗi: ${error.message}`);
-            }
-        }
+        if (!confirm('RESET toàn bộ game?')) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/rooms/${currentRoomId}/reset`, { method: 'POST' });
+            if (!res.ok) throw new Error('Cannot reset game');
+            await fetchAndUpdateUI();
+        } catch (err) { alert(`❌ Lỗi: ${err.message}`); }
     }
-
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => alert('✅ Đã copy link!'));
-    }
-
-    function toggleView() {
-        if (currentRoomId) {
-            window.open(`/play/${currentRoomId}/0`, '_blank');
-        } else {
-            alert('Chưa có phòng nào được tạo');
-        }
-    }
+    function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => alert('✅ Đã copy link!')); }
+    function toggleView() { if (currentRoomId) window.open(`/play/${currentRoomId}/0`, '_blank'); else alert('Chưa có phòng nào được tạo'); }
 
     window.createRoom = createRoom;
     window.nextPhase = nextPhase;
@@ -626,18 +399,16 @@
     window.showPhaseDetails = showPhaseDetails;
     window.copyToClipboard = copyToClipboard;
     window.toggleView = toggleView;
+    window.resetToSetup = resetToSetup;
 
-    const savedRoomId = sessionStorage.getItem('currentRoomId');
-    if (savedRoomId) {
-        currentRoomId = savedRoomId;
+    const saved = sessionStorage.getItem('currentRoomId');
+    if (saved) {
+        currentRoomId = saved;
         document.getElementById('setupPanel').style.display = 'none';
         document.getElementById('gamePanel').style.display = 'block';
         startPolling();
     }
-
-    fetch(`${API_BASE_URL}/health`).catch(err => {
-        updateConnectionStatus(false, 'Backend không khả dụng. Vui lòng cấu hình API_BASE_URL đúng.');
-    });
+    fetch(`${API_BASE_URL}/health`).catch(err => updateConnectionStatus(false, 'Backend không khả dụng.'));
 </script>
 </body>
 </html>
