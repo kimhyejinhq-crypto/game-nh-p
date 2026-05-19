@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Startup Game - Player</title>
+    <title>Startup Game - Player Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -64,6 +64,11 @@
             background: linear-gradient(90deg, #facc15, #f59e0b);
             border-radius: 10px;
         }
+        /* Màu sắc thẻ */
+        .card-hotpink { border-left: 4px solid #f43f5e; background: #fff0f2; }
+        .card-babyblue { border-left: 4px solid #0ea5e9; background: #f0f9ff; }
+        .card-yellow { border-left: 4px solid #eab308; background: #fefce8; }
+        .card-purple { border-left: 4px solid #a855f7; background: #faf5ff; }
     </style>
 </head>
 <body>
@@ -71,8 +76,8 @@
     <!-- Form nhập dự án -->
     <div id="projectForm" class="card">
         <h2 class="text-2xl font-bold text-purple-800">📝 Submit Your Project</h2>
-        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-            <div><label>Scale</label><select id="scale"><option>S (5 phases)</option><option selected>M (7 phases)</option><option>L (9 phases)</option></select></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+            <div><label>Scale</label><select id="scale"><option value="S">S (5 phases)</option><option value="M" selected>M (7 phases)</option><option value="L">L (9 phases)</option></select></div>
             <div><label>Target Funding (USD)</label><input type="number" id="targetFunding" placeholder="Auto"></div>
             <div><label>Price (USD)</label><input type="number" id="price" value="35"></div>
             <div><label>Owner Equity</label><input type="number" id="ownerEquity" value="50000"></div>
@@ -88,7 +93,7 @@
     <!-- Deck builder -->
     <div id="deckPanel" class="card" style="display:none;">
         <h2 class="text-2xl font-bold text-purple-800">🃏 Build Your Deck</h2>
-        <p>Choose <strong>22 Active cards</strong> (Hot Pink, Baby Blue, Capital) and up to <strong>3 Reaction cards</strong> (Yellow)</p>
+        <p>Chọn <strong>22 Active cards</strong> (Hot Pink, Baby Blue, Yellow) và tối đa <strong>3 Reaction cards</strong> (Purple)</p>
         <div id="deckBuilder" style="max-height: 500px; overflow-y: auto; margin: 16px 0;"></div>
         <button onclick="submitDeck()" class="w-full">✅ CONFIRM DECK</button>
     </div>
@@ -104,7 +109,7 @@
             <div style="flex:1">📈 Hype: <span id="hypeVal">50</span><div class="progress-bar"><div id="hypeBar" class="progress-fill" style="width:50%"></div></div></div>
             <div style="flex:1">🔍 Transparency: <span id="transVal">50</span><div class="progress-bar"><div id="transBar" class="progress-fill" style="width:50%"></div></div></div>
         </div>
-        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0;">
             <div>Intrinsic: <span id="intrinsic">0</span></div><div>Valuation: <span id="valuation">0</span></div>
             <div>ROI: <span id="roi">0</span></div><div>Runway: <span id="runway">0</span> mo</div>
         </div>
@@ -130,6 +135,7 @@
 </div>
 
 <script>
+    // Lấy room_id và player_index từ URL: /play/<room_id>/<player_index>
     const pathParts = window.location.pathname.split('/');
     let roomId = pathParts[pathParts.length-2];
     let playerIndex = parseInt(pathParts[pathParts.length-1]);
@@ -147,7 +153,9 @@
         const targetOverride = parseFloat(document.getElementById('targetFunding').value);
         let targetFunding = targetOverride || (scale==='S'?55000:(scale==='M'?170000:350000));
         const project = {
-            scale, max_phase: scale==='S'?5:(scale==='M'?7:9), target_funding: targetFunding,
+            scale: scale,
+            max_phase: scale==='S'?5:(scale==='M'?7:9),
+            target_funding: targetFunding,
             price: parseFloat(document.getElementById('price').value),
             owner_equity: parseFloat(document.getElementById('ownerEquity').value),
             loan: parseFloat(document.getElementById('bankLoan').value),
@@ -155,17 +163,23 @@
             fixed_cost: parseFloat(document.getElementById('fixedCost').value),
             marketing_cost: parseFloat(document.getElementById('marketingCost').value),
             available_cash: parseFloat(document.getElementById('ownerEquity').value) + parseFloat(document.getElementById('bankLoan').value),
-            hype:50, transparency:50, current_phase:0, funding_progress:0, total_invested:0, status:'active'
+            hype:50,
+            transparency:50,
+            current_phase:0,
+            funding_progress:0,
+            total_invested:0,
+            status:'active'
         };
         const res = await fetch(`${API}/submit_project`, {
             method:'POST', headers:{'Content-Type':'application/json'},
             body:JSON.stringify({room_id:roomId, player_index:playerIndex, project})
         });
-        if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
             document.getElementById('projectForm').style.display = 'none';
             document.getElementById('waitingMsg').classList.remove('hidden');
             startPolling();
-        } else alert('Submit failed');
+        } else alert('Submit failed: ' + (data.error || 'Unknown'));
     }
 
     async function loadCardLists() {
@@ -176,21 +190,30 @@
         renderDeckBuilder();
     }
 
+    function getCardClass(type) {
+        if (type === 'hotpink') return 'card-hotpink';
+        if (type === 'babyblue') return 'card-babyblue';
+        if (type === 'yellow') return 'card-yellow';
+        if (type === 'purple') return 'card-purple';
+        return '';
+    }
+
     function renderDeckBuilder() {
         const container = document.getElementById('deckBuilder');
-        let html = `<div><h3>Active Cards (choose 22)</h3><div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">`;
+        let html = `<div><h3>Active Cards (chọn 22)</h3><div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">`;
         activeCards.forEach((card, idx) => {
-            let borderColor = card.type==='hotpink'?'#f97316':(card.type==='babyblue'?'#3b82f6':'#8b5cf6');
-            let bgColor = selectedActive.has(idx) ? (card.type==='hotpink'?'#ffe4e6':(card.type==='babyblue'?'#e0f2fe':'#f3e8ff')) : 'white';
-            html += `<div class="deck-card" data-idx="${idx}" style="border-left:4px solid ${borderColor}; background:${bgColor}; padding:6px; border-radius:8px;">
+            const cardClass = getCardClass(card.type);
+            const bgColor = selectedActive.has(idx) ? (card.type==='hotpink'?'#ffe4e6':(card.type==='babyblue'?'#e0f2fe':(card.type==='yellow'?'#fef9c3':'white'))) : 'white';
+            html += `<div class="deck-card ${cardClass}" data-idx="${idx}" style="background:${bgColor}; padding:6px; border-radius:8px;">
                         <b>${card.name}</b> (${card.cost})<br><small>${card.desc.substring(0,40)}</small>
                     </div>`;
         });
-        html += `</div></div><div style="margin-top:16px;"><h3>Reaction Cards (up to 3)</h3><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;">`;
+        html += `</div></div><div style="margin-top:16px;"><h3>Reaction Cards (tối đa 3)</h3><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;">`;
         reactionCards.forEach((card, idx) => {
-            let bgColor = selectedReaction.has(idx) ? '#fef9c3' : 'white';
-            html += `<div class="deck-card" data-reaction-idx="${idx}" style="border-left:4px solid #eab308; background:${bgColor}; padding:6px; border-radius:8px;">
-                        <b>${card.name}</b><br><small>${card.trigger}</small>
+            const cardClass = getCardClass(card.type);
+            const bgColor = selectedReaction.has(idx) ? '#fef9c3' : 'white';
+            html += `<div class="deck-card ${cardClass}" data-reaction-idx="${idx}" style="background:${bgColor}; padding:6px; border-radius:8px;">
+                        <b>${card.name}</b><br><small>${card.trigger || ''}</small>
                     </div>`;
         });
         html += `</div></div>`;
@@ -200,7 +223,7 @@
                 let idx = parseInt(el.dataset.idx);
                 if (selectedActive.has(idx)) selectedActive.delete(idx);
                 else if (selectedActive.size < 22) selectedActive.add(idx);
-                else alert('Need exactly 22 active cards');
+                else alert('Cần chọn đúng 22 active cards');
                 renderDeckBuilder();
             };
         });
@@ -209,27 +232,29 @@
                 let idx = parseInt(el.dataset.reactionIdx);
                 if (selectedReaction.has(idx)) selectedReaction.delete(idx);
                 else if (selectedReaction.size < 3) selectedReaction.add(idx);
-                else alert('Max 3 reaction cards');
+                else alert('Tối đa 3 reaction cards');
                 renderDeckBuilder();
             };
         });
     }
 
     async function submitDeck() {
-        if (selectedActive.size !== 22) { alert('Select exactly 22 active cards'); return; }
+        if (selectedActive.size !== 22) { alert('Chọn đúng 22 active cards'); return; }
         const res = await fetch(`${API}/submit_deck`, {
             method:'POST', headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
-                room_id:roomId, player_index:playerIndex,
+                room_id: roomId,
+                player_index: playerIndex,
                 active_indices: Array.from(selectedActive),
                 reaction_indices: Array.from(selectedReaction)
             })
         });
-        if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
             document.getElementById('deckPanel').style.display = 'none';
             document.getElementById('gamePanel').style.display = 'block';
             startGamePolling();
-        } else alert('Deck submission failed');
+        } else alert('Deck submission failed: ' + (data.error || 'Unknown'));
     }
 
     async function fetchPlayerState() {
@@ -259,7 +284,7 @@
             if (data.triggers && data.triggers.length) {
                 document.getElementById('reactionsArea').style.display = 'block';
                 let html = '';
-                data.triggers.forEach((r,idx) => { html += `<button onclick="useReaction(${idx})" class="bg-yellow-600 text-white px-2 py-1 rounded text-sm">${r.name}</button>`; });
+                data.triggers.forEach((r,idx) => { html += `<button onclick="useReaction(${idx})" class="bg-purple-600 text-white px-2 py-1 rounded text-sm">${r.name}</button>`; });
                 document.getElementById('reactionList').innerHTML = html;
             } else {
                 document.getElementById('reactionsArea').style.display = 'none';
@@ -289,9 +314,9 @@
         if (state.hand && state.hand.length) {
             let html = '';
             state.hand.forEach((card, idx) => {
-                let borderColor = card.type==='hotpink'?'#f97316':(card.type==='babyblue'?'#3b82f6':'#8b5cf6');
-                let selectedClass = (selectedCardIdx===idx)?'selected':'';
-                html += `<div class="hand-card ${selectedClass}" style="border-left:4px solid ${borderColor};" onclick="selectCard(${idx})">
+                const cardClass = getCardClass(card.type);
+                const selectedClass = (selectedCardIdx===idx)?'selected':'';
+                html += `<div class="hand-card ${cardClass} ${selectedClass}" onclick="selectCard(${idx})">
                             <b>${card.name}</b> (${card.cost})<br><small>${card.desc.substring(0,40)}</small>
                         </div>`;
             });
@@ -303,21 +328,23 @@
 
     function selectCard(idx) { selectedCardIdx = idx; updateGameUI(gameState); }
     async function playCard() {
-        if (selectedCardIdx===null) { alert('Select a card'); return; }
+        if (selectedCardIdx===null) { alert('Chọn một lá bài'); return; }
         const res = await fetch(`${API}/play_card`, {
             method:'POST', headers:{'Content-Type':'application/json'},
             body:JSON.stringify({room_id:roomId, player_index:playerIndex, card_index:selectedCardIdx})
         });
-        if (res.ok) { selectedCardIdx=null; fetchPlayerState(); }
-        else alert('Cannot play card');
+        const data = await res.json();
+        if (data.ok) { selectedCardIdx=null; fetchPlayerState(); }
+        else alert('Cannot play card: ' + (data.error || 'Unknown'));
     }
     async function mulligan() {
         const res = await fetch(`${API}/mulligan`, {
             method:'POST', headers:{'Content-Type':'application/json'},
             body:JSON.stringify({room_id:roomId, player_index:playerIndex})
         });
-        if (res.ok) fetchPlayerState();
-        else alert('Mulligan failed');
+        const data = await res.json();
+        if (data.ok) fetchPlayerState();
+        else alert('Mulligan failed: ' + (data.error || 'Unknown'));
     }
     async function readyPhase() {
         await fetch(`${API}/player_ready_phase`, {
@@ -326,7 +353,15 @@
         });
         alert('Ready for next phase!');
     }
-    async function useReaction(idx) { alert('Reaction not fully implemented'); }
+    async function useReaction(idx) {
+        const res = await fetch(`${API}/use_reaction`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({room_id:roomId, player_index:playerIndex, reaction_index:idx})
+        });
+        const data = await res.json();
+        if (data.ok) fetchPlayerState();
+        else alert('Reaction failed: ' + (data.error || 'Unknown'));
+    }
 
     function startPolling() {
         if (pollTimer) clearInterval(pollTimer);
