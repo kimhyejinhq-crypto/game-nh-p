@@ -9,11 +9,13 @@
 # ===================================================================
 
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 import random
 import math
 import uuid
 
 app = Flask(__name__, template_folder='templates')
+CORS(app)  # Thêm CORS để frontend có thể gọi API
 app.secret_key = 'startup-game-secret'
 
 # ===================== MINH: DỮ LIỆU CỐ ĐỊNH =====================
@@ -48,67 +50,65 @@ SCENARIOS = [
     {"id":24,"name":"Independent Compliance Certification","cat":"Regulatory","delta":{"reg_risk":-10,"transparency":10,"trust_all":10,"legal_cost_percent":-2}},
 ]
 
-# ===================== MINH: CARD ENGINE – ACTIVE CARDS (đã sửa màu) =====================
+# ===================== MINH: CARD ENGINE – ACTIVE CARDS =====================
+# Đã loại bỏ tokenomic effects
 ACTIVE_CARDS_FULL = [
-    # A cards - Hot Pink
-    {"id":"A1","name":"Marketing Blitz","cost":2,"type":"hotpink","desc":"Tăng Hype 25, giảm Transparency 5","effect":{"hype":25,"transparency":-5,"cost_percent":3}},
-    {"id":"A2","name":"Viral Campaign","cost":3,"type":"hotpink","desc":"Tăng Hype 40, giảm Transparency 10","effect":{"hype":40,"transparency":-10,"cost_percent":5}},
-    {"id":"A3","name":"Flash Sale","cost":2,"type":"hotpink","desc":"Giảm giá 15%, tăng Hype 15","effect":{"price_percent":-15,"hype":15}},
-    {"id":"A4","name":"Influencer Deal","cost":2,"type":"hotpink","desc":"Tăng Hype 20, Visibility 15","effect":{"hype":20,"visibility":15,"cost_percent":2}},
-    {"id":"A5","name":"Free Trial","cost":3,"type":"hotpink","desc":"Tăng Hype 30, Utility 5","effect":{"hype":30,"utility":5,"cost_percent":4}},
-    {"id":"A6","name":"FOMO Campaign","cost":2,"type":"hotpink","desc":"Tăng Hype 20, Funding 5%","effect":{"hype":20,"funding_boost_percent":5}},
-    {"id":"A7","name":"Celebrity Endorsement","cost":2,"type":"hotpink","desc":"Tăng Hype 25, giảm Transparency 3","effect":{"hype":25,"transparency":-3,"cost_percent":4}},
-    {"id":"A8","name":"Loyalty Program","cost":3,"type":"hotpink","desc":"Tăng Hype 15, Utility 10, Transparency 5","effect":{"hype":15,"utility":10,"transparency":5}},
-    {"id":"A9","name":"Limited Offer","cost":1,"type":"hotpink","desc":"Tăng Hype 10, Visibility 5","effect":{"hype":10,"visibility":5}},
-    {"id":"A10","name":"Shill Army","cost":2,"type":"hotpink","desc":"Tăng Hype 30, giảm Transparency 15","effect":{"hype":30,"transparency":-15,"cost_percent":2}},
-    {"id":"A11","name":"Pre-sale Discount","cost":2,"type":"hotpink","desc":"Giảm giá 10%, tăng Funding 10%","effect":{"price_percent":-10,"funding_boost_percent":10}},
-    {"id":"A12","name":"Media Blast","cost":2,"type":"hotpink","desc":"Tăng Hype 20, Visibility 10","effect":{"hype":20,"visibility":10,"cost_percent":1}},
-    {"id":"A13","name":"Meme Marketing","cost":1,"type":"hotpink","desc":"Tăng Hype 15, giảm Transparency 2","effect":{"hype":15,"transparency":-2}},
-    {"id":"A14","name":"Aggressive Pricing","cost":2,"type":"hotpink","desc":"Giảm giá 20%, tăng Hype 10","effect":{"price_percent":-20,"hype":10}},
-    # D cards - Baby Blue
-    {"id":"D1","name":"Cost Cutting","cost":1,"type":"babyblue","desc":"Giảm COGS 3%, tăng Transparency 5","effect":{"cogs_percent":-3,"transparency":5}},
-    {"id":"D2","name":"Community Update","cost":1,"type":"babyblue","desc":"Tăng Hype 5, Transparency 3","effect":{"hype":5,"transparency":3}},
-    {"id":"D3","name":"Third Party Audit","cost":2,"type":"babyblue","desc":"Tăng Transparency 15, giảm rủi ro","effect":{"transparency":15,"reg_risk":-10,"cost_percent":5}},
-    {"id":"D4","name":"Vesting Pledge","cost":1,"type":"babyblue","desc":"Tăng Transparency 10, Trust 5","effect":{"transparency":10,"trust_all":5}},
-    {"id":"D5","name":"Emergency Fund","cost":2,"type":"babyblue","desc":"Tăng Runway 2 tháng","effect":{"runway":2,"cost_percent":5}},
-    {"id":"D6","name":"Open Book","cost":2,"type":"babyblue","desc":"Tăng Transparency 20","effect":{"transparency":20,"cost_percent":2}},
-    {"id":"D7","name":"Security Review","cost":1,"type":"babyblue","desc":"Tăng Security 10, Transparency 5","effect":{"security":10,"transparency":5}},
-    {"id":"D8","name":"Legal Shield","cost":2,"type":"babyblue","desc":"Giảm rủi ro pháp lý 15","effect":{"reg_risk":-15,"cost_percent":3}},
-    {"id":"D9","name":"Slow & Steady","cost":1,"type":"babyblue","desc":"Tăng Transparency 5, Hype 2","effect":{"transparency":5,"hype":2}},
-    {"id":"D10","name":"Crisis Management","cost":2,"type":"babyblue","desc":"Giảm 50% delta tiêu cực","effect":{"halve_negative_delta":1,"cost_percent":3}},
-    {"id":"D11","name":"Supply Chain Fix","cost":2,"type":"babyblue","desc":"Giảm COGS 5%, tăng Transparency 5","effect":{"cogs_percent":-5,"transparency":5}},
-    {"id":"D12","name":"Investor Call","cost":1,"type":"babyblue","desc":"Tăng Trust 10","effect":{"trust_all":10,"cost_percent":1}},
-    {"id":"D13","name":"Transparency Report","cost":2,"type":"babyblue","desc":"Tăng Transparency 15, giảm Hype 5","effect":{"transparency":15,"hype":-5}},
-    {"id":"D14","name":"Dual Approval","cost":1,"type":"babyblue","desc":"Tăng Security 15, Transparency 5","effect":{"security":15,"transparency":5}},
-    # C cards - Yellow (Capital)
-    {"id":"C1","name":"Whale Discount","cost":3,"type":"yellow","desc":"Tăng Funding 15%, giảm trust Whale","effect":{"funding_boost_percent":15,"trust_whale":-10,"cost_percent":2}},
-    {"id":"C2","name":"Investor Protection","cost":2,"type":"yellow","desc":"Tăng Trust 15, Utility 10","effect":{"funding_boost_percent":-10,"trust_all":15,"utility":10,"cost_percent":10}},
-    {"id":"C3","name":"Secondary Offering","cost":3,"type":"yellow","desc":"Tăng Funding 20%, giảm trust","effect":{"funding_boost_percent":20,"trust_all":-15}},
-    {"id":"C4","name":"DAO Vote","cost":2,"type":"yellow","desc":"Tăng Transparency 5, Trust 5","effect":{"transparency":5,"trust_all":5}},
-    {"id":"C5","name":"Customer Retention","cost":2,"type":"yellow","desc":"Tăng Utility 15","effect":{"utility":15,"velocity":-0.2}},
-    {"id":"C6","name":"Treasury Diversify","cost":2,"type":"yellow","desc":"Giảm rủi ro 10, tăng Trust 10","effect":{"reg_risk":-10,"trust_all":10}},
-    {"id":"C7","name":"Token Split","cost":2,"type":"yellow","desc":"Tăng Funding 5%, Hype 10","effect":{"funding_boost_percent":5,"hype":10}},
-    {"id":"C8","name":"Governance Proposal","cost":1,"type":"yellow","desc":"Tăng Transparency 5, Trust 5","effect":{"transparency":5,"trust_all":5}},
-    {"id":"C9","name":"Vesting Extension","cost":2,"type":"yellow","desc":"Tăng Trust 20, Transparency 10","effect":{"trust_all":20,"transparency":10,"cost_percent":2}},
-    {"id":"C10","name":"Customer Incentive","cost":3,"type":"yellow","desc":"Tăng Utility 20","effect":{"utility":20,"velocity":-0.3,"cost_percent":5}},
-    {"id":"C11","name":"Strategic Partnership","cost":2,"type":"yellow","desc":"Tăng Trust 15, giảm rủi ro","effect":{"trust_all":15,"reg_risk":-5,"cost_percent":3}},
-    {"id":"C12","name":"Product Upgrade","cost":2,"type":"yellow","desc":"Tăng Utility 15, Hype 10","effect":{"utility":15,"hype":10,"cost_percent":2}},
-    {"id":"C13","name":"Airdrop","cost":2,"type":"yellow","desc":"Tăng Trust 10, Hype 15","effect":{"trust_all":10,"hype":15,"cost_percent":4}},
-    {"id":"C14","name":"Equity Swap","cost":3,"type":"yellow","desc":"Tăng Funding 30%, giảm trust","effect":{"funding_boost_percent":30,"trust_all":-20}},
+    {"id":"A1","name":"Marketing Blitz","cost":2,"type":"red","desc":"Run a large campaign to quickly attract attention.","effect":{"hype":25,"transparency":-5,"cost_percent":3}},
+    {"id":"A2","name":"Social Media Campaign","cost":3,"type":"red","desc":"Use social media to create strong public interest.","effect":{"hype":40,"transparency":-10,"cost_percent":5}},
+    {"id":"A3","name":"Flash Sale","cost":2,"type":"red","desc":"Offer a short-term discount to increase demand.","effect":{"price_percent":-15,"hype":15}},
+    {"id":"A4","name":"Influencer Deal","cost":2,"type":"red","desc":"Use an influencer to increase hype and visibility.","effect":{"hype":20,"visibility":15,"cost_percent":2}},
+    {"id":"A5","name":"Free Trial Campaign","cost":3,"type":"red","desc":"Let customers try the product before paying.","effect":{"hype":30,"utility":5,"cost_percent":4}},
+    {"id":"A6","name":"Investor Buzz Campaign","cost":2,"type":"red","desc":"Create fundraising momentum among investors.","effect":{"hype":20,"funding_boost_percent":5}},
+    {"id":"A7","name":"Celebrity Endorsement","cost":2,"type":"red","desc":"Use a famous person to boost public attention.","effect":{"hype":25,"transparency":-3,"cost_percent":4}},
+    {"id":"A8","name":"Customer Loyalty Program","cost":3,"type":"red","desc":"Reward repeat customers to keep them engaged.","effect":{"hype":15,"utility":10,"transparency":5}},
+    {"id":"A9","name":"Limited Offer","cost":1,"type":"red","desc":"Create urgency with a short-time offer.","effect":{"hype":10,"visibility":5}},
+    {"id":"A10","name":"Aggressive Promotion","cost":2,"type":"red","desc":"Push bold promotion to gain fast attention.","effect":{"hype":30,"transparency":-15,"cost_percent":2}},
+    {"id":"A11","name":"Pre-sale Discount","cost":2,"type":"red","desc":"Use early discounts to bring in quick cash.","effect":{"price_percent":-10,"funding_boost_percent":10}},
+    {"id":"A12","name":"Media Coverage Push","cost":2,"type":"red","desc":"Get media attention for the project.","effect":{"hype":20,"visibility":10,"cost_percent":1}},
+    {"id":"A13","name":"Community Engagement Campaign","cost":1,"type":"red","desc":"Keep the community active and interested.","effect":{"hype":15,"transparency":-2}},
+    {"id":"A14","name":"Aggressive Pricing Strategy","cost":2,"type":"red","desc":"Lower prices to attract more customers.","effect":{"price_percent":-20,"hype":10}},
+    {"id":"D1","name":"Cost Cutting","cost":1,"type":"green","desc":"Reduce unnecessary operating costs.","effect":{"cogs_percent":-3,"transparency":5}},
+    {"id":"D2","name":"Community Update","cost":1,"type":"green","desc":"Update investors and customers on progress.","effect":{"hype":5,"transparency":3}},
+    {"id":"D3","name":"Third Party Audit","cost":2,"type":"green","desc":"Use an independent review to build credibility.","effect":{"transparency":15,"reg_risk":-10,"cost_percent":5}},
+    {"id":"D4","name":"Founder Commitment Pledge","cost":1,"type":"green","desc":"Show that founders are committed long term.","effect":{"transparency":10,"trust_all":5}},
+    {"id":"D5","name":"Emergency Fund","cost":2,"type":"green","desc":"Set aside reserve cash for unexpected problems.","effect":{"runway":2,"cost_percent":5}},
+    {"id":"D6","name":"Open Financial Report","cost":2,"type":"green","desc":"Share clearer financial information.","effect":{"transparency":20,"cost_percent":2}},
+    {"id":"D7","name":"Security Review Program","cost":1,"type":"green","desc":"Check system and data security risks.","effect":{"security":10,"transparency":5}},
+    {"id":"D8","name":"Legal Readiness Check","cost":2,"type":"green","desc":"Review legal and compliance documents.","effect":{"reg_risk":-15,"cost_percent":3}},
+    {"id":"D9","name":"Slow & Steady","cost":1,"type":"green","desc":"Choose controlled and realistic growth.","effect":{"transparency":5,"hype":2}},
+    {"id":"D10","name":"Crisis Management","cost":2,"type":"green","desc":"Reduce damage from a negative event.","effect":{"halve_negative_delta":1,"cost_percent":3}},
+    {"id":"D11","name":"Supply Chain Fix","cost":2,"type":"green","desc":"Fix supplier or delivery cost problems.","effect":{"cogs_percent":-5,"transparency":5}},
+    {"id":"D12","name":"Investor Call","cost":1,"type":"green","desc":"Answer investor concerns directly.","effect":{"trust_all":10,"cost_percent":1}},
+    {"id":"D13","name":"Transparency Report","cost":2,"type":"green","desc":"Explain performance, risks, and issues clearly.","effect":{"transparency":15,"hype":-5}},
+    {"id":"D14","name":"Dual Approval Control","cost":1,"type":"green","desc":"Require two approvals for sensitive actions.","effect":{"security":15,"transparency":5}},
+    {"id":"C1","name":"Strategic Investor Discount","cost":3,"type":"purple","desc":"Offer better terms to close a major investment.","effect":{"funding_boost_percent":15,"trust_all":-8,"whale_trust":5,"cost_percent":2}},
+    {"id":"C2","name":"Investor Protection Reserve","cost":2,"type":"purple","desc":"Set aside funds to reassure investors.","effect":{"funding_boost_percent":-10,"trust_all":15,"utility":10,"cost_percent":10}},
+    {"id":"C3","name":"Secondary Offering","cost":3,"type":"purple","desc":"Raise more capital from new investors.","effect":{"funding_boost_percent":20,"trust_all":-15}},
+    {"id":"C4","name":"Stakeholder Governance Vote","cost":2,"type":"purple","desc":"Let stakeholders join an important decision.","effect":{"transparency":5,"trust_all":5}},
+    {"id":"C5","name":"Customer Retention Program","cost":2,"type":"purple","desc":"Encourage customers to keep using the product.","effect":{"utility":15,"velocity":-0.2}},
+    {"id":"C6","name":"Treasury Diversify","cost":2,"type":"purple","desc":"Reduce financial dependence on one source.","effect":{"reg_risk":-10,"trust_all":10}},
+    {"id":"C7","name":"Small Share Split","cost":2,"type":"purple","desc":"Allow smaller investors to participate.","effect":{"funding_boost_percent":5,"hype":10}},
+    {"id":"C8","name":"Governance Proposal","cost":1,"type":"purple","desc":"Clarify how major decisions are made.","effect":{"transparency":5,"trust_all":5}},
+    {"id":"C9","name":"Founder Lock-In Agreement","cost":2,"type":"purple","desc":"Keep founders committed for longer.","effect":{"trust_all":20,"transparency":10,"cost_percent":2}},
+    {"id":"C10","name":"Customer Incentive Program","cost":3,"type":"purple","desc":"Encourage customers to use the service more.","effect":{"utility":20,"velocity":-0.3,"cost_percent":5}},
+    {"id":"C11","name":"Strategic Partnership","cost":2,"type":"purple","desc":"Work with a credible partner to reduce risk.","effect":{"trust_all":15,"reg_risk":-5,"cost_percent":3}},
+    {"id":"C12","name":"Product Value Upgrade","cost":2,"type":"purple","desc":"Improve the product’s practical value.","effect":{"utility":15,"hype":10,"cost_percent":2}},
+    {"id":"C13","name":"Loyalty Reward Program","cost":2,"type":"purple","desc":"Reward existing customers or supporters.","effect":{"trust_all":10,"hype":15,"cost_percent":4}},
+    {"id":"C14","name":"Equity Swap","cost":3,"type":"purple","desc":"Trade ownership value for quick funding.","effect":{"funding_boost_percent":30,"trust_all":-20}},
 ]
 
-# ===================== MINH: CARD ENGINE – REACTION CARDS (màu tím) =====================
+# ===================== MINH: CARD ENGINE – REACTION CARDS =====================
 REACTION_CARDS = [
-    {"id":"R1","name":"Lock-up Extension","type":"purple","trigger":"on_bot_withdraw","condition":{"event":"bot_withdraw"},"desc":"Giảm bán tháo 50%","cost_percent":2,"effect":{"sell_pressure_reduce":0.5}},
-    {"id":"R2","name":"Emergency PR","type":"purple","trigger":"on_scenario_market_bad","condition":{"event":"market_bad"},"desc":"Giảm 50% delta xấu","cost_percent":3,"effect":{"halve_negative_delta":1}},
-    {"id":"R3","name":"Whale Whisperer","type":"purple","trigger":"on_whale_trust_low","condition":{"metric":"whale_trust","operator":"<","value":30},"desc":"Tăng trust Whale 10","cost_percent":5,"effect":{"whale_trust":10}},
-    {"id":"R4","name":"Damage Control","type":"purple","trigger":"on_transparency_low","condition":{"metric":"transparency","operator":"<","value":30},"desc":"Tăng Transparency 10, giảm Hype 5","cost_percent":2,"effect":{"transparency":10,"hype":-5}},
-    {"id":"R5","name":"Liquidity Injection","type":"purple","trigger":"on_circuit_breaker","condition":{"metric":"circuit_breaker_active","operator":"==","value":True},"desc":"Rút ngắn circuit breaker","cost_percent":8,"effect":{"circuit_breaker_reduce":1}},
-    {"id":"R6","name":"Legal Emergency","type":"purple","trigger":"on_reg_risk_high","condition":{"metric":"reg_risk","operator":">","value":70},"desc":"Giảm rủi ro pháp lý 20","cost_percent":4,"effect":{"reg_risk":-20}},
-    {"id":"R7","name":"Security Patch","type":"purple","trigger":"on_security_low","condition":{"metric":"security","operator":"<","value":30},"desc":"Tăng Security 15","cost_percent":3,"effect":{"security":15}},
-    {"id":"R8","name":"FOMO Suppression","type":"purple","trigger":"on_hype_high","condition":{"metric":"hype","operator":">","value":80},"desc":"Giảm Hype 15, tăng Transparency 5","cost_percent":1,"effect":{"hype":-15,"transparency":5}},
-    {"id":"R9","name":"Investor Assurance","type":"purple","trigger":"on_trust_low","condition":{"metric":"min_bot_trust","operator":"<","value":20},"desc":"Tăng trust 5","cost_percent":2,"effect":{"trust_all":5}},
-    {"id":"R10","name":"Runway Boost","type":"purple","trigger":"on_runway_low","condition":{"metric":"runway","operator":"<","value":3},"desc":"Thêm 3 tháng runway","cost_percent":10,"effect":{"runway":3}},
+    {"id":"R1","name":"Lock-up Extension","trigger":"on_bot_withdraw","condition":{"event":"bot_withdraw"},"desc":"Slow withdrawals when investors start leaving.","cost_percent":2,"effect":{"sell_pressure_reduce":0.5}},
+    {"id":"R2","name":"Emergency PR","trigger":"on_scenario_market_bad","condition":{"event":"market_bad"},"desc":"Respond quickly to bad market news.","cost_percent":3,"effect":{"halve_negative_delta":1}},
+    {"id":"R3","name":"Major Investor Briefing","trigger":"on_whale_trust_low","condition":{"metric":"whale_trust","operator":"<","value":30},"desc":"Rebuild confidence with major investors.","cost_percent":5,"effect":{"whale_trust":10}},
+    {"id":"R4","name":"Damage Control","trigger":"on_transparency_low","condition":{"metric":"transparency","operator":"<","value":30},"desc":"Explain problems and restore transparency.","cost_percent":2,"effect":{"transparency":10,"hype":-5}},
+    {"id":"R5","name":"Liquidity Support Plan","trigger":"on_circuit_breaker","condition":{"metric":"circuit_breaker_active","operator":"==","value":True},"desc":"Reduce the impact of a liquidity freeze.","cost_percent":8,"effect":{"circuit_breaker_reduce":1}},
+    {"id":"R6","name":"Legal Emergency","trigger":"on_reg_risk_high","condition":{"metric":"reg_risk","operator":">","value":70},"desc":"Handle urgent legal or compliance risk.","cost_percent":4,"effect":{"reg_risk":-20}},
+    {"id":"R7","name":"Security Patch","trigger":"on_security_low","condition":{"metric":"security","operator":"<","value":30},"desc":"Fix urgent security weaknesses.","cost_percent":3,"effect":{"security":15}},
+    {"id":"R8","name":"Expectation Management","trigger":"on_hype_high","condition":{"metric":"hype","operator":">","value":80},"desc":"Control unrealistic public expectations.","cost_percent":1,"effect":{"hype":-15,"transparency":5}},
+    {"id":"R9","name":"Investor Assurance","trigger":"on_trust_low","condition":{"metric":"min_bot_trust","operator":"<","value":20},"desc":"Reassure worried investors.","cost_percent":2,"effect":{"trust_all":5}},
+    {"id":"R10","name":"Runway Boost","trigger":"on_runway_low","condition":{"metric":"runway","operator":"<","value":3},"desc":"Extend survival time during cash pressure.","cost_percent":10,"effect":{"runway":3}},
 ]
 
 def get_condition_value(project, metric):
@@ -1067,11 +1067,249 @@ def card_lists():
     except Exception as e:
         return jsonify({'error': 'Không thể tải danh sách thẻ', 'details': str(e)}), 500
 
+# ==================== DƯƠNG: BỔ SUNG API CHO HOST FRONTEND ====================
+# Các route này được thêm vào để host.html có thể giao tiếp với backend
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Kiểm tra trạng thái backend"""
+    return jsonify({'status': 'ok', 'message': 'Backend đang chạy'})
+
+@app.route('/api/rooms', methods=['POST'])
+def api_create_room():
+    """Tạo phòng mới - version cho host.html gọi"""
+    data = request.json
+    room_name = data.get('name', 'Startup Game')
+    max_players = data.get('maxPlayers', 4)
+    
+    room_id = str(uuid.uuid4())[:8]
+    base_url = request.host_url.rstrip('/')
+    
+    rooms[room_id] = {
+        'num_players': max_players,
+        'players': [None] * max_players,
+        'phase': 0,
+        'max_phase': 0,
+        'status': 'waiting_for_projects',
+        'bot_alloc': None,
+        'logs': ["Phòng đã tạo. Chờ người chơi submit dự án..."],
+        'player_ready': [False] * max_players,
+        'deck_ready': [False] * max_players,
+        'pending_cards': {},
+        'phase_energy': [3] * max_players,
+        'mulligan_used': [False] * max_players,
+        'game_ended': False,
+        'player_triggers': [{} for _ in range(max_players)],
+        'bot_memory': {bot['id']: {'attractiveness_history': [[] for _ in range(max_players)]} for bot in BOTS},
+        'submitted_players': 0,
+        'name': room_name,
+        'phase_details': []
+    }
+    
+    join_links = []
+    for i in range(max_players):
+        join_links.append({
+            'playerIndex': i,
+            'playerName': f'Player {i+1}',
+            'realLink': f"{base_url}/play/{room_id}/{i}"
+        })
+    
+    return jsonify({
+        'id': room_id,
+        'name': room_name,
+        'maxPlayers': max_players,
+        'joinLinks': join_links
+    })
+
+@app.route('/api/rooms/<room_id>', methods=['GET'])
+def api_get_room(room_id):
+    """Lấy thông tin phòng cho host.html"""
+    if room_id not in rooms:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    room = rooms[room_id]
+    
+    # Tạo danh sách players cho frontend
+    players_list = []
+    for i, proj in enumerate(room.get('players', [])):
+        if proj:
+            players_list.append({
+                'id': i,
+                'name': f'Player {i+1}',
+                'status': proj.get('status', 'active'),
+                'funding': proj.get('funding_progress', 0),
+                'hype': proj.get('hype', 50),
+                'transparency': proj.get('transparency', 50),
+                'score': 0,
+                'current_phase': proj.get('current_phase', 0),
+                'max_phase': proj.get('max_phase', 5)
+            })
+        else:
+            players_list.append({
+                'id': i,
+                'name': f'Player {i+1}',
+                'status': 'not_joined',
+                'funding': 0,
+                'hype': 50,
+                'transparency': 50,
+                'score': 0,
+                'current_phase': 0,
+                'max_phase': 5
+            })
+    
+    # Tạo join links
+    base_url = request.host_url.rstrip('/')
+    join_links = []
+    for i in range(room.get('num_players', 4)):
+        join_links.append({
+            'playerIndex': i,
+            'playerName': f'Player {i+1}',
+            'realLink': f"{base_url}/play/{room_id}/{i}"
+        })
+    
+    # Tạo joined players count
+    joined_players = len([p for p in room.get('players', []) if p is not None])
+    
+    return jsonify({
+        'name': room.get('name', 'Game Room'),
+        'maxPlayers': room.get('num_players', 4),
+        'joinedPlayers': joined_players,
+        'currentPhase': room.get('phase', 0),
+        'maxPhase': room.get('max_phase', 7),
+        'ended': room.get('game_ended', False),
+        'players': players_list,
+        'logs': room.get('logs', []),
+        'phaseDetails': room.get('phase_details', []),
+        'joinLinks': join_links,
+        'can_start_deck': room.get('status') == 'waiting_for_projects' and room.get('submitted_players', 0) >= 2
+    })
+
+@app.route('/api/rooms/<room_id>/next-phase', methods=['POST'])
+def api_next_phase(room_id):
+    """Chuyển sang phase tiếp theo"""
+    if room_id not in rooms:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    room = rooms[room_id]
+    
+    # Lưu phase details trước khi chuyển (nếu có người chơi)
+    if room.get('players') and any(p for p in room['players'] if p):
+        phase_details = {
+            'phase': room.get('phase', 0),
+            'date': str(uuid.uuid4())[:8],
+            'event': f"End of Phase {room.get('phase', 0)}",
+            'players': []
+        }
+        for i, p in enumerate(room['players']):
+            if p:
+                phase_details['players'].append({
+                    'name': f'Player {i+1}',
+                    'status': p.get('status', 'active'),
+                    'funding': p.get('funding_progress', 0),
+                    'hype': p.get('hype', 50),
+                    'score': 0
+                })
+        
+        if 'phase_details' not in room:
+            room['phase_details'] = []
+        room['phase_details'].append(phase_details)
+    
+    # Tăng phase
+    room['phase'] = room.get('phase', 0) + 1
+    
+    # Reset ready states cho phase mới
+    room['player_ready'] = [False] * room.get('num_players', 4)
+    
+    return jsonify({'success': True, 'phase': room.get('phase', 0)})
+
+@app.route('/api/rooms/<room_id>/random-event', methods=['POST'])
+def api_random_event(room_id):
+    """Thêm sự kiện ngẫu nhiên"""
+    if room_id not in rooms:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    room = rooms[room_id]
+    scenario = random.choice(SCENARIOS)
+    
+    if 'logs' not in room:
+        room['logs'] = []
+    room['logs'].append(f"🎲 Sự kiện ngẫu nhiên: {scenario['name']}")
+    
+    # Áp dụng sự kiện cho tất cả người chơi active
+    for proj in room.get('players', []):
+        if proj and proj.get('status') == 'active':
+            d = scenario['delta']
+            if 'hype' in d:
+                proj['hype'] = clamp(proj.get('hype', 50) + d['hype'], 0, 100)
+            if 'transparency' in d:
+                proj['transparency'] = clamp(proj.get('transparency', 50) + d['transparency'], 0, 100)
+    
+    return jsonify({'success': True, 'event': scenario['name']})
+
+@app.route('/api/rooms/<room_id>/reset-phase', methods=['POST'])
+def api_reset_phase(room_id):
+    """Reset phase hiện tại"""
+    if room_id not in rooms:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    room = rooms[room_id]
+    
+    # Reset phase về 0 (hoặc giảm đi 1)
+    if room.get('phase', 0) > 0:
+        room['phase'] = max(0, room['phase'] - 1)
+    
+    # Reset logs
+    room['logs'] = room.get('logs', []) + [f"🔄 Phase đã được reset về {room['phase']}"]
+    
+    return jsonify({'success': True, 'phase': room.get('phase', 0)})
+
+@app.route('/api/rooms/<room_id>/end', methods=['POST'])
+def api_end_game(room_id):
+    """Kết thúc game"""
+    if room_id not in rooms:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    room = rooms[room_id]
+    room['game_ended'] = True
+    room['status'] = 'ended'
+    room['logs'].append("🏁 Game đã kết thúc bởi host!")
+    
+    return jsonify({'success': True})
+
+@app.route('/api/rooms/<room_id>/reset', methods=['POST'])
+def api_reset_game(room_id):
+    """Reset toàn bộ game"""
+    if room_id not in rooms:
+        return jsonify({'error': 'Room not found'}), 404
+    
+    room = rooms[room_id]
+    
+    # Reset các giá trị
+    room['phase'] = 0
+    room['game_ended'] = False
+    room['status'] = 'waiting_for_projects'
+    room['players'] = [None] * room.get('num_players', 4)
+    room['submitted_players'] = 0
+    room['player_ready'] = [False] * room.get('num_players', 4)
+    room['deck_ready'] = [False] * room.get('num_players', 4)
+    room['pending_cards'] = {}
+    room['mulligan_used'] = [False] * room.get('num_players', 4)
+    room['player_triggers'] = [{} for _ in range(room.get('num_players', 4))]
+    room['logs'] = ["🔄 Game đã được reset. Chờ người chơi submit dự án..."]
+    room['phase_details'] = []
+    
+    # Reset bot memory
+    for bot_id in room['bot_memory']:
+        room['bot_memory'][bot_id]['attractiveness_history'] = [[] for _ in range(room.get('num_players', 4))]
+    
+    return jsonify({'success': True})
+
 if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
     
     print(f"🚀 Server đang chạy tại http://0.0.0.0:{port}")
     print(f"📌 Mode: Production")
+    print(f"📌 Các API đã sẵn sàng: /api/rooms, /api/health, /api/rooms/<id>/next-phase, ...")
     
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
