@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Startup Game · Host Dashboard</title>
+    <title>Fun(d) Raising · Host Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -114,6 +114,7 @@
     const API_BASE = window.location.origin + '/api';
     let currentRoomId = null;
     let pollInterval = null;
+    let autoStartedDeckPhase = false; // để tránh gọi nhiều lần
 
     async function createRoom() {
         const name = document.getElementById('roomName').value;
@@ -149,6 +150,12 @@
             if (!res.ok) throw new Error();
             const data = await res.json();
             updateUI(data);
+            // Tự động bắt đầu deck phase nếu đủ người chơi và chưa bắt đầu
+            if (data.status === 'waiting_for_projects' && data.joinedPlayers >= 2 && !autoStartedDeckPhase) {
+                autoStartedDeckPhase = true;
+                console.log('Auto starting deck phase');
+                await startDeckPhase();
+            }
         } catch(e) {
             document.getElementById('connectionStatus').innerHTML = '⚠️ Lost connection';
         }
@@ -223,7 +230,7 @@
             body: JSON.stringify({ room_id: currentRoomId })
         });
         if (res.ok) fetchRoom();
-        else alert('Cannot start deck phase');
+        else console.error('Cannot start deck phase');
     }
 
     async function nextPhase() {
