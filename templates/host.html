@@ -35,18 +35,9 @@
             margin-top: 10px;
             transition: all 0.25s;
         }
-        button:hover { 
-            transform: scale(0.98);
-            box-shadow: 0 8px 20px rgba(156, 39, 176, 0.3);
-        }
+        button:hover { transform: scale(0.98); box-shadow: 0 8px 20px rgba(156, 39, 176, 0.3); }
         button:disabled { opacity: 0.55; cursor: not-allowed; }
-        input, select { 
-            background-color: rgba(255, 255, 255, 0.95);
-            border: 1px solid #c9b1e6;
-            padding: 8px 12px; 
-            border-radius: 12px; 
-            margin: 0 5px;
-        }
+        input, select { background-color: rgba(255,255,255,0.95); border: 1px solid #c9b1e6; padding: 8px 12px; border-radius: 12px; margin: 0 5px; }
         .rankings { display: grid; gap: 14px; margin-top: 15px; }
         .rank-card { background: rgba(255,255,255,0.85); border-radius: 1.2rem; padding: 14px; border-left: 4px solid #ec4899; }
         .player-card-joined { background: rgba(34,197,94,0.12); border-left-color: #22c55e; }
@@ -77,10 +68,13 @@
             <input type="number" id="numPlayers" min="2" max="10" value="4">
             <button onclick="createRoom()">🚀 CREATE ROOM</button>
         </div>
+        <div id="existingRoomInfo" style="margin-top:10px; font-size:14px; color:#6b21a5;"></div>
     </div>
 
     <div class="panel" id="gamePanel" style="display:none;">
-        <h2>🏠 <span id="roomNameDisplay">---</span> · ID: <span id="roomId">---</span></h2>
+        <h2>🏠 <span id="roomNameDisplay">---</span> · ID: <span id="roomId">---</span>
+            <button onclick="createNewRoom()" style="background: #9c27b0; padding: 5px 15px; font-size:14px;">➕ New Room</button>
+        </h2>
 
         <div class="panel">
             <h3>🔗 Player Join Links</h3>
@@ -95,6 +89,7 @@
                 <span>🎯 Status: <strong id="gameStatus">-</strong></span>
             </div>
             <div class="flex" style="margin-top: 10px;">
+                <button onclick="startDeckPhase()" id="startDeckBtn" disabled>🎴 START DECK SELECTION</button>
                 <button onclick="nextPhase()" id="runPhaseBtn" disabled>▶ NEXT PHASE</button>
                 <button onclick="addRandomEvent()" id="eventBtn" disabled>🎲 RANDOM EVENT</button>
                 <button onclick="resetCurrentPhase()" id="resetPhaseBtn" disabled>🔄 RESET PHASE</button>
@@ -137,6 +132,14 @@
         document.getElementById('roomId').innerText = currentRoomId;
         document.getElementById('roomNameDisplay').innerText = name;
         startPolling();
+        document.getElementById('existingRoomInfo').innerHTML = `Current room: ${currentRoomId} <button onclick="createNewRoom()" style="background:#7c3aed; padding:2px 10px;">Create another</button>`;
+    }
+
+    function createNewRoom() {
+        if (confirm('Create a new room? Current room data will be lost if not saved.')) {
+            sessionStorage.removeItem('roomId');
+            window.location.reload();
+        }
     }
 
     async function fetchRoom() {
@@ -159,12 +162,16 @@
         const statusSpan = document.getElementById('gameStatus');
         if (room.ended) statusSpan.innerHTML = '🏁 ENDED';
         else if (room.currentPhase >= room.maxPhase) statusSpan.innerHTML = '🏆 COMPLETED';
-        else statusSpan.innerHTML = '🔥 IN PROGRESS';
+        else statusSpan.innerHTML = room.status === 'waiting_for_projects' ? '⏳ Waiting for projects' : (room.status === 'choosing_deck' ? '🃏 Choosing decks' : '🔥 IN PROGRESS');
 
-        const isActive = !room.ended && room.currentPhase < room.maxPhase;
-        document.getElementById('runPhaseBtn').disabled = !isActive;
-        document.getElementById('eventBtn').disabled = !isActive;
-        document.getElementById('resetPhaseBtn').disabled = !isActive;
+        const isWaiting = room.status === 'waiting_for_projects';
+        const isChoosingDeck = room.status === 'choosing_deck';
+        const isPlaying = room.status === 'playing' && !room.ended;
+        
+        document.getElementById('startDeckBtn').disabled = !(isWaiting && room.joinedPlayers >= 2);
+        document.getElementById('runPhaseBtn').disabled = !isPlaying;
+        document.getElementById('eventBtn').disabled = !isPlaying;
+        document.getElementById('resetPhaseBtn').disabled = !isPlaying;
         document.getElementById('endGameBtn').disabled = room.ended;
 
         // Join links
@@ -209,31 +216,36 @@
         }
     }
 
+    async function startDeckPhase() {
+        const res = await fetch(`${API_BASE}/start_deck_phase`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ room_id: currentRoomId })
+        });
+        if (res.ok) fetchRoom();
+        else alert('Cannot start deck phase');
+    }
+
     async function nextPhase() {
-        if (!currentRoomId) return;
         const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/next-phase`, {method: 'POST'});
         if (res.ok) fetchRoom();
         else alert('Cannot advance phase');
     }
     async function addRandomEvent() {
-        if (!currentRoomId) return;
         const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/random-event`, {method: 'POST'});
         if (res.ok) fetchRoom();
     }
     async function resetCurrentPhase() {
-        if (!currentRoomId) return;
         await fetch(`${API_BASE}/rooms/${currentRoomId}/reset-phase`, {method: 'POST'});
         fetchRoom();
     }
     async function endGame() {
-        if (!currentRoomId) return;
         if (confirm('End game now?')) {
             await fetch(`${API_BASE}/rooms/${currentRoomId}/end`, {method: 'POST'});
             fetchRoom();
         }
     }
     async function resetGame() {
-        if (!currentRoomId) return;
         if (confirm('Reset entire game? All data lost.')) {
             await fetch(`${API_BASE}/rooms/${currentRoomId}/reset`, {method: 'POST'});
             fetchRoom();
@@ -257,6 +269,8 @@
     }
 
     window.createRoom = createRoom;
+    window.createNewRoom = createNewRoom;
+    window.startDeckPhase = startDeckPhase;
     window.nextPhase = nextPhase;
     window.addRandomEvent = addRandomEvent;
     window.resetCurrentPhase = resetCurrentPhase;
