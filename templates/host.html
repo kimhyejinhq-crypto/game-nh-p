@@ -2,263 +2,222 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Fun(d) Raising · Host Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Startup Game - Host</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #fce4ec 0%, #e1d5e7 50%, #c5d9f0 100%);
-            color: #1e1b2b;
-            padding: 20px; 
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #fce4ec, #e1d5e7, #c5d9f0);
+            padding: 20px;
             min-height: 100vh;
         }
-        .container { max-width: 1280px; margin: 0 auto; }
-        .panel { 
-            background: rgba(255, 255, 255, 0.92);
+        .container { max-width: 1200px; margin: 0 auto; }
+        .card {
+            background: rgba(255,255,255,0.92);
             backdrop-filter: blur(8px);
             border-radius: 1.5rem;
-            padding: 20px; 
-            margin-bottom: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.15);
         }
-        button { 
+        button {
             background: linear-gradient(95deg, #f48fb1, #ba6bff, #5e9bff);
-            color: white; 
-            border: none; 
-            padding: 10px 24px; 
-            border-radius: 40px; 
-            cursor: pointer; 
-            font-size: 16px;
-            font-weight: 600;
-            margin-top: 10px;
-            transition: all 0.25s;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
         }
-        button:hover { transform: scale(0.98); box-shadow: 0 8px 20px rgba(156, 39, 176, 0.3); }
-        button:disabled { opacity: 0.55; cursor: not-allowed; }
-        input, select { background-color: rgba(255,255,255,0.95); border: 1px solid #c9b1e6; padding: 8px 12px; border-radius: 12px; margin: 0 5px; }
-        .rankings { display: grid; gap: 14px; margin-top: 15px; }
-        .rank-card { background: rgba(255,255,255,0.85); border-radius: 1.2rem; padding: 14px; border-left: 4px solid #ec4899; }
-        .player-card-joined { background: rgba(34,197,94,0.12); border-left-color: #22c55e; }
-        .player-card-not-joined { background: #ffffffdd; border-left-color: #94a3b8; }
-        .funding-bar { width: 100%; height: 10px; background: #e2d4f0; border-radius: 999px; overflow: hidden; margin-top: 4px; }
-        .funding-bar-fill { height: 100%; background: linear-gradient(90deg, #facc15, #f59e0b); border-radius: 999px; }
-        .logs { background: rgba(0,0,0,0.06); border-radius: 1rem; padding: 14px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; }
-        .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .link-item { background: rgba(255,255,255,0.7); padding: 12px; border-radius: 16px; margin-bottom: 8px; word-break: break-all; }
-        .success { color: #16a34a; font-weight: 700; }
-        .error { color: #dc2626; font-weight: 700; }
-        .metric-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #f3e5ff; color: #4a2b7a; }
+        button:hover { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        input, select { padding: 8px 12px; border-radius: 12px; border: 1px solid #c9b1e6; margin: 0 5px; }
+        .link-item { background: rgba(255,255,255,0.7); padding: 12px; border-radius: 16px; margin-bottom: 8px; }
+        .logs { background: rgba(0,0,0,0.05); border-radius: 1rem; padding: 12px; max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 13px; }
+        .flex { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .rank-card { background: white; border-radius: 1rem; padding: 12px; margin-bottom: 8px; border-left: 4px solid #ec4899; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel">
-        <h2>✨ Startup Game - Host Control</h2>
-        <div id="connectionStatus" style="padding: 8px; border-radius: 20px;">🔌 Đang kết nối...</div>
+    <div class="card">
+        <h2>✨ Startup Game - Host Dashboard</h2>
+        <div id="connStatus">🔌 Đang kết nối...</div>
     </div>
 
-    <div class="panel" id="setupPanel">
-        <h2>🎮 Create New Room</h2>
+    <div class="card" id="setupPanel">
+        <h2>🎮 Create Room</h2>
         <div class="flex">
-            <label>🏷️ Room name:</label>
+            <label>Room name:</label>
             <input type="text" id="roomName" value="Startup Arena">
-            <label>👥 Players:</label>
+            <label>Players:</label>
             <input type="number" id="numPlayers" min="2" max="10" value="4">
             <button onclick="createRoom()">🚀 CREATE ROOM</button>
         </div>
-        <div id="existingRoomInfo" style="margin-top:10px; font-size:14px; color:#6b21a5;"></div>
     </div>
 
-    <div class="panel" id="gamePanel" style="display:none;">
-        <h2>🏠 <span id="roomNameDisplay">---</span> · ID: <span id="roomId">---</span>
-            <button onclick="createNewRoom()" style="background: #9c27b0; padding: 5px 15px; font-size:14px;">➕ New Room</button>
-        </h2>
-
-        <div class="panel">
-            <h3>🔗 Player Join Links</h3>
-            <div id="joinLinksList">Loading...</div>
+    <div class="card" id="gamePanel" style="display:none;">
+        <div class="flex" style="justify-content: space-between;">
+            <h2>🏠 <span id="roomNameDisplay"></span> · ID: <span id="roomId"></span></h2>
+            <button onclick="newRoom()">➕ New Room</button>
         </div>
 
-        <div class="panel">
-            <h3>⏱️ Game Progress</h3>
+        <div class="card">
+            <h3>🔗 Player Links (click Copy gửi cho từng người)</h3>
+            <div id="joinLinks"></div>
+        </div>
+
+        <div class="card">
+            <h3>⏱️ Progress</h3>
             <div class="flex">
-                <span>👥 <strong id="playerCount">0</strong> / <span id="maxPlayers">0</span></span>
-                <span>🕒 Phase: <strong id="currentPhase">-</strong> / <strong id="maxPhase">-</strong></span>
+                <span>👥 <strong id="joinedCount">0</strong>/<span id="totalPlayers">0</span></span>
+                <span>🕒 Phase <strong id="currentPhase">0</strong>/<strong id="maxPhase">0</strong></span>
                 <span>🎯 Status: <strong id="gameStatus">-</strong></span>
             </div>
-            <div class="flex" style="margin-top: 10px;">
-                <button onclick="startDeckPhase()" id="startDeckBtn" disabled>🎴 START DECK SELECTION</button>
-                <button onclick="nextPhase()" id="runPhaseBtn" disabled>▶ NEXT PHASE</button>
-                <button onclick="addRandomEvent()" id="eventBtn" disabled>🎲 RANDOM EVENT</button>
-                <button onclick="resetCurrentPhase()" id="resetPhaseBtn" disabled>🔄 RESET PHASE</button>
+            <div class="flex" style="margin-top: 12px;">
+                <button onclick="nextPhase()" id="nextPhaseBtn" disabled>▶ NEXT PHASE</button>
+                <button onclick="addRandomEvent()" id="randEventBtn" disabled>🎲 RANDOM EVENT</button>
+                <button onclick="resetPhase()" id="resetPhaseBtn" disabled>🔄 RESET PHASE</button>
                 <button onclick="endGame()" id="endGameBtn" disabled>⛔ END GAME</button>
                 <button onclick="resetGame()" id="resetGameBtn">🔄 RESET GAME</button>
             </div>
         </div>
 
-        <div class="panel">
+        <div class="card">
             <h3>📜 Event Log</h3>
-            <div id="logsArea" class="logs">No events yet</div>
+            <div id="logs" class="logs">--</div>
         </div>
 
-        <div class="panel">
+        <div class="card">
             <h3>🏆 Leaderboard</h3>
-            <div id="rankings" class="rankings">Loading...</div>
+            <div id="rankings">--</div>
         </div>
     </div>
 </div>
 
 <script>
-    const API_BASE = window.location.origin + '/api';
-    let currentRoomId = null;
+    const API = window.location.origin + '/api';
+    let currentRoom = null;
     let pollInterval = null;
-    let autoStartedDeckPhase = false; // để tránh gọi nhiều lần
 
     async function createRoom() {
         const name = document.getElementById('roomName').value;
         const maxPlayers = parseInt(document.getElementById('numPlayers').value);
-        const res = await fetch(`${API_BASE}/rooms`, {
+        const res = await fetch(`${API}/rooms`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type':'application/json'},
             body: JSON.stringify({name, maxPlayers})
         });
-        if (!res.ok) return alert('Create room failed');
         const data = await res.json();
-        currentRoomId = data.id;
-        sessionStorage.setItem('roomId', currentRoomId);
+        currentRoom = data.id;
+        sessionStorage.setItem('roomId', currentRoom);
         document.getElementById('setupPanel').style.display = 'none';
         document.getElementById('gamePanel').style.display = 'block';
-        document.getElementById('roomId').innerText = currentRoomId;
+        document.getElementById('roomId').innerText = currentRoom;
         document.getElementById('roomNameDisplay').innerText = name;
+        document.getElementById('totalPlayers').innerText = maxPlayers;
         startPolling();
-        document.getElementById('existingRoomInfo').innerHTML = `Current room: ${currentRoomId} <button onclick="createNewRoom()" style="background:#7c3aed; padding:2px 10px;">Create another</button>`;
     }
 
-    function createNewRoom() {
-        if (confirm('Create a new room? Current room data will be lost if not saved.')) {
+    function newRoom() {
+        if (confirm('Create new room? Current will be lost.')) {
             sessionStorage.removeItem('roomId');
-            window.location.reload();
+            location.reload();
         }
     }
 
     async function fetchRoom() {
-        if (!currentRoomId) return;
-        try {
-            const res = await fetch(`${API_BASE}/rooms/${currentRoomId}`);
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            updateUI(data);
-            // Tự động bắt đầu deck phase nếu đủ người chơi và chưa bắt đầu
-            if (data.status === 'waiting_for_projects' && data.joinedPlayers >= 2 && !autoStartedDeckPhase) {
-                autoStartedDeckPhase = true;
-                console.log('Auto starting deck phase');
-                await startDeckPhase();
-            }
-        } catch(e) {
-            document.getElementById('connectionStatus').innerHTML = '⚠️ Lost connection';
-        }
+        if (!currentRoom) return;
+        const res = await fetch(`${API}/rooms/${currentRoom}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        updateUI(data);
     }
 
     function updateUI(room) {
-        document.getElementById('playerCount').innerText = room.joinedPlayers;
-        document.getElementById('maxPlayers').innerText = room.maxPlayers;
+        document.getElementById('joinedCount').innerText = room.joinedPlayers;
         document.getElementById('currentPhase').innerText = room.currentPhase;
         document.getElementById('maxPhase').innerText = room.maxPhase;
-        const statusSpan = document.getElementById('gameStatus');
-        if (room.ended) statusSpan.innerHTML = '🏁 ENDED';
-        else if (room.currentPhase >= room.maxPhase) statusSpan.innerHTML = '🏆 COMPLETED';
-        else statusSpan.innerHTML = room.status === 'waiting_for_projects' ? '⏳ Waiting for projects' : (room.status === 'choosing_deck' ? '🃏 Choosing decks' : '🔥 IN PROGRESS');
+        let statusText = '';
+        if (room.ended) statusText = '🏁 ENDED';
+        else if (room.status === 'waiting_for_projects') statusText = '⏳ Waiting for projects';
+        else if (room.status === 'choosing_deck') statusText = '🃏 Choosing decks';
+        else statusText = '🔥 IN PROGRESS';
+        document.getElementById('gameStatus').innerText = statusText;
 
-        const isWaiting = room.status === 'waiting_for_projects';
-        const isChoosingDeck = room.status === 'choosing_deck';
-        const isPlaying = room.status === 'playing' && !room.ended;
-        
-        document.getElementById('startDeckBtn').disabled = !(isWaiting && room.joinedPlayers >= 2);
-        document.getElementById('runPhaseBtn').disabled = !isPlaying;
-        document.getElementById('eventBtn').disabled = !isPlaying;
+        const isPlaying = (room.status === 'playing' && !room.ended);
+        document.getElementById('nextPhaseBtn').disabled = !isPlaying;
+        document.getElementById('randEventBtn').disabled = !isPlaying;
         document.getElementById('resetPhaseBtn').disabled = !isPlaying;
         document.getElementById('endGameBtn').disabled = room.ended;
 
         // Join links
-        if (room.joinLinks) {
-            let html = '';
-            room.joinLinks.forEach(link => {
-                const joined = room.players.find(p => p.id === link.playerIndex)?.status !== 'not_joined';
-                html += `<div class="link-item"><strong>${link.playerName}</strong> ${joined ? '✅ Joined' : '⏳ Waiting'}<br>
-                <input type="text" value="${link.realLink}" style="width:70%; font-size:12px;" readonly>
-                <button onclick="copy('${link.realLink}')">Copy</button></div>`;
-            });
-            document.getElementById('joinLinksList').innerHTML = html;
-        }
+        let linksHtml = '';
+        room.joinLinks.forEach(link => {
+            const joined = room.players.find(p => p.id === link.playerIndex)?.status !== 'not_joined';
+            linksHtml += `
+                <div class="link-item">
+                    <strong>${link.playerName}</strong> ${joined ? '✅ Joined' : '⏳ Waiting'} <br>
+                    <input type="text" value="${link.realLink}" style="width: 70%; font-size:12px;" readonly>
+                    <button onclick="copyToClipboard('${link.realLink}')">Copy</button>
+                </div>
+            `;
+        });
+        document.getElementById('joinLinks').innerHTML = linksHtml;
 
         // Logs
         if (room.logs && room.logs.length) {
-            document.getElementById('logsArea').innerHTML = room.logs.slice().reverse().map(l => `📌 ${l}`).join('<br>');
+            document.getElementById('logs').innerHTML = room.logs.slice().reverse().map(l => `📌 ${l}`).join('<br>');
         } else {
-            document.getElementById('logsArea').innerHTML = 'No events yet';
+            document.getElementById('logs').innerHTML = '--';
         }
 
         // Rankings
-        if (room.players) {
-            const sorted = [...room.players].sort((a,b)=> (b.score||0)-(a.score||0));
-            let rankHtml = '';
-            sorted.forEach((p, i) => {
-                const fundingPercent = ((p.funding||0)*100).toFixed(1);
-                rankHtml += `
-                    <div class="rank-card ${p.status === 'active' ? 'player-card-joined' : 'player-card-not-joined'}">
-                        <h3>${i+1}. ${p.name} <span>${p.status === 'active' ? '🎮 Playing' : (p.status==='ended'?'🏁 Done':'⌛ Waiting')}</span></h3>
-                        <div>💰 Funding: ${fundingPercent}%</div>
-                        <div class="funding-bar"><div class="funding-bar-fill" style="width: ${fundingPercent}%;"></div></div>
-                        <div class="flex" style="margin-top:8px;">
-                            <span class="metric-tag">📈 Hype ${p.hype||0}</span>
-                            <span class="metric-tag">🔍 Trans ${p.transparency||0}</span>
-                            <span class="metric-tag">🏅 Score ${(p.score||0).toFixed(2)}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            document.getElementById('rankings').innerHTML = rankHtml;
-        }
-    }
-
-    async function startDeckPhase() {
-        const res = await fetch(`${API_BASE}/start_deck_phase`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ room_id: currentRoomId })
+        let rankHtml = '';
+        room.players.forEach((p, i) => {
+            const funding = ((p.funding || 0)*100).toFixed(1);
+            rankHtml += `
+                <div class="rank-card">
+                    <strong>${p.name}</strong> - ${p.status === 'active' ? '🎮 Playing' : (p.status==='ended'?'🏁 Done':'⌛ Waiting')}<br>
+                    💰 Funding: ${funding}% &nbsp; 📈 Hype: ${p.hype||0} &nbsp; 🔍 Trans: ${p.transparency||0}
+                </div>
+            `;
         });
-        if (res.ok) fetchRoom();
-        else console.error('Cannot start deck phase');
+        document.getElementById('rankings').innerHTML = rankHtml || '--';
     }
 
     async function nextPhase() {
-        const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/next-phase`, {method: 'POST'});
-        if (res.ok) fetchRoom();
-        else alert('Cannot advance phase');
+        const res = await fetch(`${API}/rooms/${currentRoom}/next-phase`, {method:'POST'});
+        if (!res.ok) alert('Cannot advance phase');
+        else fetchRoom();
     }
     async function addRandomEvent() {
-        const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/random-event`, {method: 'POST'});
-        if (res.ok) fetchRoom();
+        const res = await fetch(`${API}/rooms/${currentRoom}/random-event`, {method:'POST'});
+        if (!res.ok) alert('Cannot add event');
+        else fetchRoom();
     }
-    async function resetCurrentPhase() {
-        await fetch(`${API_BASE}/rooms/${currentRoomId}/reset-phase`, {method: 'POST'});
+    async function resetPhase() {
+        await fetch(`${API}/rooms/${currentRoom}/reset-phase`, {method:'POST'});
         fetchRoom();
     }
     async function endGame() {
         if (confirm('End game now?')) {
-            await fetch(`${API_BASE}/rooms/${currentRoomId}/end`, {method: 'POST'});
+            await fetch(`${API}/rooms/${currentRoom}/end`, {method:'POST'});
             fetchRoom();
         }
     }
     async function resetGame() {
-        if (confirm('Reset entire game? All data lost.')) {
-            await fetch(`${API_BASE}/rooms/${currentRoomId}/reset`, {method: 'POST'});
+        if (confirm('Reset all data?')) {
+            await fetch(`${API}/rooms/${currentRoom}/reset`, {method:'POST'});
             fetchRoom();
         }
     }
-    function copy(text) { navigator.clipboard.writeText(text); alert('Copied!'); }
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text);
+        alert('Copied!');
+    }
 
     function startPolling() {
         if (pollInterval) clearInterval(pollInterval);
@@ -266,24 +225,13 @@
         pollInterval = setInterval(fetchRoom, 2500);
     }
 
-    // Auto-load room if exists
     const saved = sessionStorage.getItem('roomId');
     if (saved) {
-        currentRoomId = saved;
+        currentRoom = saved;
         document.getElementById('setupPanel').style.display = 'none';
         document.getElementById('gamePanel').style.display = 'block';
         startPolling();
     }
-
-    window.createRoom = createRoom;
-    window.createNewRoom = createNewRoom;
-    window.startDeckPhase = startDeckPhase;
-    window.nextPhase = nextPhase;
-    window.addRandomEvent = addRandomEvent;
-    window.resetCurrentPhase = resetCurrentPhase;
-    window.endGame = endGame;
-    window.resetGame = resetGame;
-    window.copy = copy;
 </script>
 </body>
 </html>
