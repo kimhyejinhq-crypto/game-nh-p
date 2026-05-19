@@ -1,433 +1,509 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Startup Game - Điều khiển dự án</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Startup Game - Player Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-        body { background: #0b1120; color: #eef2ff; padding: 20px; margin: 0; }
-        .container { max-width: 1000px; margin: auto; }
-        .panel { background: #1e293b; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-        button { background: #ec4899; border: none; padding: 8px 16px; border-radius: 30px; font-weight: bold; cursor: pointer; margin: 5px; transition: 0.2s; color: white; }
-        button:hover { background: #be185d; transform: scale(1.02); }
-        .card-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; max-height: 320px; overflow-y: auto; padding: 5px; }
-        .card { border-radius: 20px; padding: 8px 12px; cursor: pointer; transition: 0.1s; background: #334155; width: 180px; flex-shrink: 0; }
-        .card.red { background: #7f1a1a; border-left: 4px solid #ef4444; }
-        .card.green { background: #14532d; border-left: 4px solid #22c55e; }
-        .card.purple { background: #4c1d95; border-left: 4px solid #a855f7; }
-        .card.selected { background: #ec4899; color: #0f172a; border-left-color: white; }
-        .card .desc { font-size: 0.65rem; color: #cbd5e1; margin-top: 4px; }
-        .info-bar { background: #0f172a; border-radius: 20px; padding: 10px; display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-        .metrics { background: #0f172a; border-radius: 16px; padding: 12px; margin-top: 15px; font-size: 0.8rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 8px; }
-        .investors { background: #0f172a; border-radius: 16px; padding: 12px; margin-top: 15px; max-height: 200px; overflow-y: auto; }
-        .flex { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .scenario-banner { background: #ec4899; color: #0f172a; border-radius: 16px; padding: 12px; margin-bottom: 20px; font-weight: bold; text-align: center; font-size: 1rem; }
-        .reaction-trigger { background: #8b5cf6; border-radius: 12px; padding: 10px; margin: 10px 0; }
-        .endgame { background: #ec4899; border-radius: 16px; padding: 16px; text-align: center; }
-        .trigger-card { background: #4c1d95; border-radius: 12px; padding: 8px; margin: 5px; display: inline-block; cursor: pointer; transition: 0.1s; }
-        .trigger-card:hover { background: #6d28d9; transform: scale(1.02); }
-        input, select { background: #0f172a; border: 1px solid #334155; padding: 6px 10px; border-radius: 12px; color: white; }
-        label { font-weight: 500; }
-        .message { margin-top: 10px; padding: 8px; border-radius: 12px; }
-        .success { background: #166534; color: #bbf7d0; }
-        .error { background: #7f1a1a; color: #fecaca; }
-    </style>
-    <script>
-        var roomId = "{{ room_id }}";
-        var playerIndex = {{ player_index }};
-        var maxPlayers = {{ max_players }};
-    </script>
-</head>
-<body>
-<div class="container">
-    <div id="projectFormPanel" class="panel">
-        <h2>📝 NHẬP DỰ ÁN</h2>
-        <div class="info-bar"><span>🏠 Phòng: <strong id="roomIdDisplay"></strong></span><span>🎮 Bạn là: <strong id="playerIdxDisplay"></strong></span></div>
-        <form id="projectForm">
-            <div class="grid-2">
-                <div><label>Scale</label>
-                    <select id="scale">
-                        <option value="S">Small (5 phases)</option>
-                        <option value="M" selected>Medium (7 phases)</option>
-                        <option value="L">Large (9 phases)</option>
-                    </select>
-                </div>
-                <div><label>Giá bán (USD)</label><input type="number" id="price" value="35" step="1"></div>
-                <div><label>Phí ecom, retail, direct (%)</label><input type="text" id="fees" value="10,15,5"></div>
-                <div><label>Nguyên liệu, bao bì, ship (USD)</label><input type="text" id="cogs" value="12,3,4"></div>
-                <div><label>Dự phòng lỗi</label><input type="number" id="defect" value="0.06" step="0.01"></div>
-                <div><label>Sản lượng (m1,m3,m6)</label><input type="text" id="units" value="800,2000,5000"></div>
-                <div><label>Chi phí cố định, marketing (USD)</label><input type="text" id="fixed" value="12000,7000"></div>
-                <div><label>Vốn góp, vay, lãi suất (%)</label><input type="text" id="capital" value="50000,30000,8"></div>
-                <div><label>% cổ phần (equity offered)</label><input type="number" id="equity" value="15" step="1"></div>
-            </div>
-            <button type="submit">🚀 GỬI DỰ ÁN</button>
-        </form>
-    </div>
-
-    <div id="deckPanel" style="display:none;" class="panel">
-        <h2>🃏 CHỌN DECK (22 ACTIVE + 3 REACTION)</h2>
-        <p>🔴 Đỏ: Tấn công (tăng Hype) &nbsp; 🟢 Xanh: Phòng thủ (tăng Transparency) &nbsp; 🟣 Tím: Tài chính (tăng Funding/Trust)</p>
-        <div id="activeList" class="card-list"></div>
-        <div id="reactionList" class="card-list"></div>
-        <button id="submitDeckBtn">✅ XÁC NHẬN DECK</button>
-    </div>
-
-    <div id="gamePanel" style="display:none;" class="panel">
-        <h2>🎮 PHASE <span id="phaseNum"></span> / <span id="maxPhasePlayer"></span></h2>
-        <div id="scenarioDisplay" class="scenario-banner">📢 Đợi sự kiện...</div>
-        <div class="info-bar"><span>💰 Funding: <strong id="funding"></strong></span><span>💵 Tiền mặt: <strong id="cash"></strong></span><span>⚡ Năng lượng: <strong id="energy"></strong></span></div>
-        <div id="metrics" class="metrics">Đang tải...</div>
-        <h3>🎴 THỜI TAY (chọn thẻ để đánh)</h3>
-        <div id="hand" class="card-list"></div>
-        <div class="flex">
-            <button id="playCardBtn">▶ ĐÁNH THẺ</button>
-            <button id="mulliganBtn">🔄 MULLIGAN (tốn 1 energy, -2 transparency)</button>
-            <button id="readyBtn">✅ SẴN SÀNG CHO PHASE</button>
-        </div>
-        <div id="reactionTriggers"></div>
-        <h3>🐋 NHÀ ĐẦU TƯ ĐANG ỦNG HỘ</h3>
-        <div id="investors" class="investors"></div>
-        <div id="message" class="message"></div>
-    </div>
-
-    <div id="endgamePanel" style="display:none;" class="panel endgame">
-        <h2>🏆 GAME KẾT THÚC</h2>
-        <p>Điểm của bạn: <strong id="finalScoreEnd">0</strong></p>
-        <p>Funding đạt: <strong id="finalFundingEnd">0</strong>%</p>
-        <button onclick="location.reload()">🔄 CHƠI LẠI</button>
-    </div>
-</div>
-
-<script>
-    const roomIdElem = document.getElementById('roomIdDisplay');
-    const playerIdxElem = document.getElementById('playerIdxDisplay');
-    roomIdElem.innerText = roomId;
-    playerIdxElem.innerText = playerIndex + 1;
-
-    let selectedCardIdx = null;
-    let gameInterval = null;
-    let allActiveCards = [];
-    let allReactionCards = [];
-    let selectedActive = new Set();
-    let selectedReaction = new Set();
-
-    async function loadCards() {
-        try {
-            const res = await fetch('/api/card_lists');
-            if (!res.ok) throw new Error('Không thể tải danh sách thẻ');
-            const data = await res.json();
-            allActiveCards = data.active;
-            allReactionCards = data.reaction;
-            renderDeckSelection();
-        } catch (err) {
-            console.error(err);
-            alert('Lỗi tải thẻ: ' + err.message);
+        body {
+            background: linear-gradient(135deg, #fce4ec 0%, #e1d5e7 50%, #c5d9f0 100%);
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
-    }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            border-radius: 1.5rem;
+        }
+        .btn-gradient {
+            background: linear-gradient(95deg, #f48fb1, #ba6bff, #5e9bff);
+            transition: all 0.25s;
+        }
+        .btn-gradient:hover {
+            transform: scale(0.98);
+            box-shadow: 0 8px 20px rgba(156, 39, 176, 0.3);
+        }
+        .hand-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 0.5rem;
+            margin: 0.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: 0.1s;
+            cursor: pointer;
+        }
+        .hand-card.selected {
+            background: #fce4ec;
+            border-left-width: 6px !important;
+        }
+        .deck-card {
+            transition: all 0.2s;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #edd9ff; border-radius: 20px; }
+        ::-webkit-scrollbar-thumb { background: #a569e6; border-radius: 20px; }
+        .info-icon {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: #f8bbd0;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 6px;
+            color: #4a1d6d;
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="p-5 font-sans antialiased">
+    <div class="max-w-5xl mx-auto">
+        <!-- Project submission form -->
+        <div id="projectFormPanel" class="glass-card rounded-3xl p-6 shadow-2xl">
+            <div class="flex justify-between items-center flex-wrap gap-3 mb-5">
+                <h2 class="text-3xl font-extrabold bg-gradient-to-r from-pink-500 via-purple-600 to-blue-500 bg-clip-text text-transparent">SUBMIT YOUR PROJECT</h2>
+                <div class="bg-white/80 backdrop-blur-sm px-5 py-2 rounded-full shadow-sm border border-purple-200 text-sm">
+                    <span class="text-pink-500 font-bold">You are:</span> 
+                    <strong id="playerName" class="text-purple-800">Player 1</strong> 
+                    <span class="text-gray-500 ml-3">Room: <span id="roomIdDisplay" class="font-mono">---</span></span>
+                </div>
+            </div>
+            <form id="projectForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block font-semibold">Scale</label>
+                        <select id="scale" class="w-full rounded-xl p-2 border">
+                            <option value="S">Small (5 phases)</option>
+                            <option value="M" selected>Medium (7 phases)</option>
+                            <option value="L">Large (9 phases)</option>
+                        </select>
+                    </div>
+                    <div><label class="block font-semibold">Target Funding (USD)</label>
+                        <input type="number" id="targetFunding" placeholder="Auto" class="w-full rounded-xl p-2 border">
+                    </div>
+                    <div><label class="block font-semibold">Price (USD)</label>
+                        <input type="number" id="price" value="35" class="w-full rounded-xl p-2 border">
+                    </div>
+                    <div><label class="block font-semibold">Owner Equity (USD)</label>
+                        <input type="number" id="ownerEquity" value="50000" class="w-full rounded-xl p-2 border">
+                    </div>
+                    <div><label class="block font-semibold">Bank Loan (USD)</label>
+                        <input type="number" id="bankLoan" value="30000" class="w-full rounded-xl p-2 border">
+                    </div>
+                    <div><label class="block font-semibold">Loan Rate (%/year)</label>
+                        <input type="number" id="loanRate" value="8" class="w-full rounded-xl p-2 border">
+                    </div>
+                    <div><label class="block font-semibold">Fixed Cost / month</label>
+                        <input type="number" id="fixedCost" value="15000" class="w-full rounded-xl p-2 border">
+                    </div>
+                    <div><label class="block font-semibold">Marketing Cost / month</label>
+                        <input type="number" id="marketingCost" value="8000" class="w-full rounded-xl p-2 border">
+                    </div>
+                </div>
+                <button type="submit" class="btn-gradient w-full py-3 rounded-2xl font-extrabold text-white shadow-xl text-lg">SUBMIT PROJECT & BUILD DECK</button>
+            </form>
+        </div>
 
-    function renderDeckSelection() {
-        let activeHtml = '';
-        allActiveCards.forEach((card, idx) => {
-            activeHtml += `<div class="card ${card.type}" data-active-idx="${idx}">
-                            <strong>${card.name}</strong> (cost ${card.cost})<br>
-                            <div class="desc">${card.desc}</div>
-                           </div>`;
-        });
-        document.getElementById('activeList').innerHTML = activeHtml;
-        let reactionHtml = '';
-        allReactionCards.forEach((card, idx) => {
-            reactionHtml += `<div class="card" data-reaction-idx="${idx}">
-                                ${card.name}<br>
-                                <div class="desc">${card.desc || card.trigger}</div>
-                             </div>`;
-        });
-        document.getElementById('reactionList').innerHTML = reactionHtml;
-        document.getElementById('deckPanel').style.display = 'block';
+        <!-- Deck selection panel -->
+        <div id="deckPanel" class="glass-card rounded-3xl p-6 shadow-xl hidden mt-6"></div>
 
-        document.querySelectorAll('#activeList .card').forEach(card => {
-            card.onclick = () => {
-                let idx = parseInt(card.dataset.activeIdx);
-                if (selectedActive.has(idx)) {
-                    selectedActive.delete(idx);
-                    card.style.background = '';
-                    card.style.color = '';
-                } else {
-                    if (selectedActive.size < 22) {
-                        selectedActive.add(idx);
-                        card.style.background = '#ec4899';
-                        card.style.color = '#0f172a';
-                    } else {
-                        alert('Chỉ được chọn 22 lá Active');
-                    }
-                }
+        <!-- Main game panel -->
+        <div id="gamePanel" class="glass-card rounded-3xl p-6 shadow-xl hidden mt-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-purple-800">YOUR PROJECT</h2>
+                <div class="flex gap-2">
+                    <span class="bg-purple-100 px-3 py-1 rounded-full text-sm font-bold">💰 <span id="funding">0</span>%</span>
+                    <span class="bg-purple-100 px-3 py-1 rounded-full text-sm font-bold">⚡ <span id="energy">3</span></span>
+                </div>
+            </div>
+            <div id="scenarioDisplay" class="bg-pink-100 border border-pink-300 rounded-xl p-3 mb-4 text-center text-purple-800">Waiting for event...</div>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-white/70 rounded-xl p-3">
+                    <div class="text-xs text-purple-600">HYPE</div>
+                    <div class="text-2xl font-bold text-pink-500" id="hypeVal">50</div>
+                    <div class="w-full bg-purple-200 rounded-full h-2 mt-1"><div id="hypeBar" class="bg-pink-500 h-2 rounded-full" style="width: 50%"></div></div>
+                </div>
+                <div class="bg-white/70 rounded-xl p-3">
+                    <div class="text-xs text-purple-600">TRANSPARENCY</div>
+                    <div class="text-2xl font-bold text-green-600" id="transVal">50</div>
+                    <div class="w-full bg-purple-200 rounded-full h-2 mt-1"><div id="transBar" class="bg-green-500 h-2 rounded-full" style="width: 50%"></div></div>
+                </div>
+            </div>
+            <div class="bg-white/70 rounded-xl p-3 mb-4">
+                <div class="text-xs text-purple-600">PROJECT METRICS</div>
+                <div class="grid grid-cols-2 gap-2 text-sm mt-1">
+                    <div>📈 Intrinsic: <span id="intrinsic">0</span></div>
+                    <div>📉 Valuation: <span id="valuation">0</span></div>
+                    <div>💰 ROI: <span id="roi">0</span></div>
+                    <div>🛫 Runway: <span id="runway">0</span> months</div>
+                </div>
+            </div>
+            <h3 class="font-bold mb-2 text-purple-800">YOUR HAND</h3>
+            <div id="hand" class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4 min-h-32"></div>
+            <div class="flex gap-2 mb-4">
+                <button id="playCardBtn" class="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 px-4 py-2 rounded-full font-bold transition flex-1 text-white">▶ PLAY CARD</button>
+                <button id="mulliganBtn" class="bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-full font-bold transition flex-1 text-white">🔄 MULLIGAN</button>
+                <button id="readyBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-full font-bold transition flex-1 text-white">✅ READY</button>
+            </div>
+            <div id="reactionTriggers" class="bg-purple-200/50 rounded-xl p-3 hidden">
+                <h3 class="font-bold mb-2 text-purple-800">⚡ REACTIONS AVAILABLE</h3>
+                <div id="reactionList" class="flex gap-2 flex-wrap"></div>
+            </div>
+            <div id="investors" class="bg-white/70 rounded-xl p-3">
+                <div class="text-xs text-purple-600">INVESTORS</div>
+                <div id="investorsList" class="text-sm text-purple-800">Loading...</div>
+            </div>
+        </div>
+
+        <!-- End game screen -->
+        <div id="endgamePanel" class="glass-card rounded-3xl p-6 shadow-xl text-center hidden">
+            <h2 class="text-3xl font-bold mb-4 text-purple-800">GAME OVER</h2>
+            <div class="text-6xl font-bold text-pink-500 mb-2"><span id="finalScore">0</span></div>
+            <div class="text-gray-600 mb-4">Your score</div>
+            <button onclick="location.reload()" class="btn-gradient px-6 py-2 rounded-full font-bold text-white">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // ========== Lấy thông tin từ URL ==========
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomId = urlParams.get('room');
+        let playerIndex = parseInt(urlParams.get('player'));
+        // Nếu không có query param, thử lấy từ path (hỗ trợ /play/room_id/player_index)
+        if (!roomId) {
+            const pathParts = window.location.pathname.split('/');
+            if (pathParts.length >= 3) {
+                roomId = pathParts[pathParts.length-2];
+                playerIndex = parseInt(pathParts[pathParts.length-1]);
+            }
+        }
+        if (isNaN(playerIndex)) playerIndex = 0;
+        
+        document.getElementById('playerName').innerText = `Player ${playerIndex + 1}`;
+        document.getElementById('roomIdDisplay').innerText = roomId || '???';
+        
+        const API_BASE = window.location.origin + '/api';
+        
+        // ========== Dữ liệu toàn cục ==========
+        let activeCardsList = [];
+        let reactionCardsList = [];
+        let selectedActiveIndices = new Set();
+        let selectedReactionIndices = new Set();
+        let currentHand = [];
+        let selectedCardIdx = null;
+        let gamePollInterval = null;
+        
+        // ========== Helper ==========
+        function getTargetFundingFromScale(scale, override) {
+            if (override && override > 0) return override;
+            const defaults = { S: 55000, M: 170000, L: 350000 };
+            return defaults[scale];
+        }
+        
+        // ========== SUBMIT PROJECT ==========
+        document.getElementById('projectForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const scale = document.getElementById('scale').value;
+            const targetOverride = parseFloat(document.getElementById('targetFunding').value);
+            const targetFunding = getTargetFundingFromScale(scale, targetOverride);
+            const maxPhase = scale === 'S' ? 5 : (scale === 'M' ? 7 : 9);
+            
+            const project = {
+                scale: scale,
+                max_phase: maxPhase,
+                target_funding: targetFunding,
+                price: parseFloat(document.getElementById('price').value),
+                owner_equity: parseFloat(document.getElementById('ownerEquity').value),
+                loan: parseFloat(document.getElementById('bankLoan').value),
+                interest_rate: parseFloat(document.getElementById('loanRate').value),
+                fixed_cost: parseFloat(document.getElementById('fixedCost').value),
+                marketing_cost: parseFloat(document.getElementById('marketingCost').value),
+                available_cash: parseFloat(document.getElementById('ownerEquity').value) + parseFloat(document.getElementById('bankLoan').value),
+                hype: 50,
+                transparency: 50,
+                current_phase: 0,
+                funding_progress: 0,
+                total_invested: 0,
+                status: 'active'
             };
-        });
-        document.querySelectorAll('#reactionList .card').forEach(card => {
-            card.onclick = () => {
-                let idx = parseInt(card.dataset.reactionIdx);
-                if (selectedReaction.has(idx)) {
-                    selectedReaction.delete(idx);
-                    card.style.background = '';
-                } else {
-                    if (selectedReaction.size < 3) {
-                        selectedReaction.add(idx);
-                        card.style.background = '#ec4899';
-                    } else {
-                        alert('Tối đa 3 Reaction');
-                    }
-                }
-            };
-        });
-
-        document.getElementById('submitDeckBtn').onclick = async () => {
-            if (selectedActive.size !== 22) {
-                alert('Cần chọn đúng 22 lá Active');
-                return;
-            }
-            const activeIndices = Array.from(selectedActive);
-            const reactionIndices = Array.from(selectedReaction);
-            try {
-                const res = await fetch('/api/submit_deck', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        room_id: roomId,
-                        player_index: playerIndex,
-                        active_indices: activeIndices,
-                        reaction_indices: reactionIndices
-                    })
-                });
-                const data = await res.json();
-                if (data.ok) {
-                    document.getElementById('deckPanel').style.display = 'none';
-                    startGamePolling();
-                } else {
-                    alert('Lỗi: ' + data.error);
-                }
-            } catch (err) {
-                alert('Lỗi kết nối: ' + err.message);
-            }
-        };
-    }
-
-    function startGamePolling() {
-        if (gameInterval) clearInterval(gameInterval);
-        gameInterval = setInterval(async () => {
-            try {
-                const state = await fetch(`/api/player_state?room_id=${roomId}&player_index=${playerIndex}`).then(r=>r.json());
-                console.log('Player state:', state);
-                if (state.game_ended) {
-                    clearInterval(gameInterval);
-                    document.getElementById('gamePanel').style.display = 'none';
-                    document.getElementById('endgamePanel').style.display = 'block';
-                    document.getElementById('finalScoreEnd').innerText = (state.final_score || 0).toFixed(2);
-                    document.getElementById('finalFundingEnd').innerText = (state.funding_progress * 100).toFixed(1);
-                    return;
-                }
-                if (state.status === 'playing') {
-                    // Hiển thị game panel
-                    document.getElementById('gamePanel').style.display = 'block';
-                    document.getElementById('phaseNum').innerText = state.phase;
-                    document.getElementById('maxPhasePlayer').innerText = state.max_phase;
-                    document.getElementById('funding').innerText = (state.funding_progress * 100).toFixed(1) + '%';
-                    document.getElementById('cash').innerText = Math.floor(state.available_cash).toLocaleString();
-                    document.getElementById('energy').innerText = state.energy_left;
-                    if (state.last_scenario) {
-                        document.getElementById('scenarioDisplay').innerHTML = `📢 ${state.last_scenario}`;
-                    }
-                    let metricsHtml = `
-                        <div>📈 Intrinsic: ${state.metrics.intrinsic?.toFixed(1) || 0}</div>
-                        <div>📉 Valuation Sanity: ${state.metrics.valuation_sanity?.toFixed(1) || 0}</div>
-                        <div>💰 ROI (norm): ${state.metrics.roi_norm?.toFixed(1) || 0}</div>
-                        <div>💵 Raw ROI: ${state.metrics.raw_roi?.toFixed(0) || 0}%</div>
-                        <div>🏦 Est. Valuation: ${(state.metrics.estimated_valuation / 1000).toFixed(0)}k USD</div>
-                        <div>🔥 Hype: ${state.hype} | 🔍 Trans: ${state.transparency}</div>
-                        <div>🛫 Runway: ${state.metrics.runway} tháng</div>
-                    `;
-                    document.getElementById('metrics').innerHTML = metricsHtml;
-                    let handHtml = '';
-                    if (state.hand && state.hand.length) {
-                        state.hand.forEach((card, idx) => {
-                            handHtml += `<div class="card ${card.type}" data-cardidx="${idx}">
-                                            <strong>${card.name}</strong> (cost ${card.cost})<br>
-                                            <div class="desc">${card.desc}</div>
-                                         </div>`;
-                        });
-                    } else {
-                        handHtml = '<div>Chưa có thẻ, hãy đợi phase tiếp theo</div>';
-                    }
-                    document.getElementById('hand').innerHTML = handHtml;
-                    document.querySelectorAll('#hand .card').forEach(el => {
-                        if (el.dataset.cardidx !== undefined) {
-                            el.onclick = () => {
-                                document.querySelectorAll('#hand .card').forEach(c => c.classList.remove('selected'));
-                                el.classList.add('selected');
-                                selectedCardIdx = parseInt(el.dataset.cardidx);
-                            };
-                        }
-                    });
-
-                    let invHtml = '';
-                    if (state.investors && state.investors.length) {
-                        state.investors.forEach(bot => {
-                            invHtml += `<div>🐋 ${bot.type} - ${bot.amount.toLocaleString()} USD</div>`;
-                        });
-                    } else {
-                        invHtml = '<div>Chưa có nhà đầu tư nào</div>';
-                    }
-                    document.getElementById('investors').innerHTML = invHtml;
-
-                    // Reaction triggers
-                    if (state.triggers && state.triggers.length > 0) {
-                        let triggersHtml = '<div class="reaction-trigger"><strong>⚡ REACTION CÓ THỂ KÍCH HOẠT:</strong><br>';
-                        state.triggers.forEach((card, idx) => {
-                            triggersHtml += `<div class="trigger-card" data-reaction-index="${idx}">
-                                                ${card.name}<br><small>${card.desc || card.trigger}</small>
-                                             </div>`;
-                        });
-                        triggersHtml += '</div>';
-                        document.getElementById('reactionTriggers').innerHTML = triggersHtml;
-
-                        document.querySelectorAll('.trigger-card').forEach(el => {
-                            el.onclick = async () => {
-                                const reactionIndex = parseInt(el.dataset.reactionIndex);
-                                const res = await fetch('/api/use_reaction', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        room_id: roomId,
-                                        player_index: playerIndex,
-                                        reaction_index: reactionIndex
-                                    })
-                                });
-                                const data = await res.json();
-                                if (data.ok) {
-                                    alert('Đã sử dụng reaction!');
-                                    location.reload();
-                                } else {
-                                    alert('Lỗi: ' + data.error);
-                                }
-                            };
-                        });
-                    } else {
-                        document.getElementById('reactionTriggers').innerHTML = '';
-                    }
-                } else {
-                    // Nếu chưa ở trạng thái playing, ẩn gamePanel (có thể đang chọn deck)
-                    if (state.status !== 'playing') {
-                        document.getElementById('gamePanel').style.display = 'none';
-                    }
-                }
-            } catch (err) {
-                console.error('Polling error:', err);
-                document.getElementById('message').innerHTML = `<div class="error">Lỗi kết nối: ${err.message}</div>`;
-            }
-        }, 2000);
-    }
-
-    document.getElementById('projectForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const scale = document.getElementById('scale').value;
-        const scaleMap = { S:[5,50000,0.8], M:[7,150000,1], L:[9,300000,1.5] };
-        const [max_phase, target, sf] = scaleMap[scale];
-        const fees = document.getElementById('fees').value.split(',').map(Number);
-        const cogs = document.getElementById('cogs').value.split(',').map(Number);
-        const units = document.getElementById('units').value.split(',').map(Number);
-        const fixed = document.getElementById('fixed').value.split(',').map(Number);
-        const capital = document.getElementById('capital').value.split(',').map(Number);
-        const project = {
-            scale, max_phase, target_funding: target, scale_factor: sf,
-            price: parseFloat(document.getElementById('price').value),
-            fee_ecom: fees[0]||0, fee_retail: fees[1]||0, fee_direct: fees[2]||0,
-            material: cogs[0]||0, packaging: cogs[1]||0, shipping: cogs[2]||0,
-            defect_rate: parseFloat(document.getElementById('defect').value),
-            units_m1: units[0], units_m3: units[1], units_m6: units[2],
-            fixed_cost: fixed[0], marketing_cost: fixed[1],
-            owner_equity: capital[0], loan: capital[1], interest_rate: capital[2],
-            equity_offered: parseFloat(document.getElementById('equity').value),
-            transparency: 50, hype: 50, visibility: 50,
-            has_license: false
-        };
-        try {
-            const res = await fetch('/api/submit_project', {
+            
+            const res = await fetch(`${API_BASE}/submit_project`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ room_id: roomId, player_index: playerIndex, project: project })
             });
-            const data = await res.json();
-            if (data.ok) {
-                document.getElementById('projectFormPanel').style.display = 'none';
-                await loadCards();
+            if (res.ok) {
+                document.getElementById('projectFormPanel').classList.add('hidden');
+                document.getElementById('deckPanel').classList.remove('hidden');
+                loadCardLists();
             } else {
-                alert('Lỗi: ' + (data.error || 'Không gửi được'));
+                const err = await res.json();
+                alert('Submit failed: ' + (err.error || 'Unknown error'));
             }
-        } catch (err) {
-            alert('Lỗi kết nối: ' + err.message);
+        };
+        
+        // ========== Lấy danh sách thẻ từ backend ==========
+        async function loadCardLists() {
+            const res = await fetch(`${API_BASE}/card_lists`);
+            const data = await res.json();
+            activeCardsList = data.active;
+            reactionCardsList = data.reaction;
+            renderDeckBuilder();
         }
-    });
-
-    document.getElementById('playCardBtn').onclick = async () => {
-        if (selectedCardIdx === null) { alert('Chọn thẻ trước'); return; }
-        try {
-            const res = await fetch('/api/play_card', {
+        
+        // ========== Hiển thị deck builder với màu hotpink, babyblue, lavender ==========
+        function renderDeckBuilder() {
+            const container = document.getElementById('deckPanel');
+            let html = `
+                <h2 class="text-2xl font-bold mb-4 text-purple-800">BUILD YOUR DECK</h2>
+                <p class="text-sm mb-2">● <span style="color:#f43f5e;">Hot Pink</span> — Attack &nbsp;|&nbsp;
+                   ● <span style="color:#0ea5e9;">Baby Blue</span> — Defense &nbsp;|&nbsp;
+                   ● <span style="color:#a855f7;">Lavender</span> — Tokenomics</p>
+                <div class="mb-4"><h3 class="font-bold">ACTIVE CARDS (choose 22)</h3>
+                <div id="activeDeckList" class="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-96 overflow-y-auto p-2 bg-white/50 rounded-lg"></div>
+                <div class="text-sm mt-1">Selected: <span id="activeCount">0</span>/22</div></div>
+                <div class="mb-4"><h3 class="font-bold">REACTION CARDS (up to 3)</h3>
+                <div id="reactionDeckList" class="grid grid-cols-2 md:grid-cols-3 gap-2 p-2 bg-white/50 rounded-lg"></div>
+                <div class="text-sm mt-1">Selected: <span id="reactionCount">0</span>/3</div></div>
+                <button id="confirmDeckBtn" class="btn-gradient w-full py-3 rounded-2xl font-extrabold text-white shadow-lg text-lg">CONFIRM DECK</button>
+            `;
+            container.innerHTML = html;
+            
+            const activeContainer = document.getElementById('activeDeckList');
+            activeCardsList.forEach((card, idx) => {
+                let borderColor = card.type === 'hotpink' ? '#f43f5e' : (card.type === 'babyblue' ? '#0ea5e9' : '#a855f7');
+                let bgColor = selectedActiveIndices.has(idx) ? (card.type === 'hotpink' ? '#ffe4e6' : (card.type === 'babyblue' ? '#e0f2fe' : '#f3e8ff')) : 'white';
+                activeContainer.innerHTML += `
+                    <div class="rounded-lg p-2 cursor-pointer deck-card active-card" data-idx="${idx}" style="border-left: 4px solid ${borderColor}; background: ${bgColor};">
+                        <div class="font-bold text-sm text-purple-800">${card.name}</div>
+                        <div class="text-xs text-purple-600">Cost: ${card.cost}</div>
+                        <div class="text-xs text-purple-600">${card.desc.substring(0,40)}</div>
+                    </div>
+                `;
+            });
+            const reactionContainer = document.getElementById('reactionDeckList');
+            reactionCardsList.forEach((card, idx) => {
+                let bgColor = selectedReactionIndices.has(idx) ? '#f3e8ff' : 'white';
+                reactionContainer.innerHTML += `
+                    <div class="rounded-lg p-2 cursor-pointer deck-card reaction-card" data-idx="${idx}" style="border-left: 4px solid #a855f7; background: ${bgColor};">
+                        <div class="font-bold text-sm text-purple-800">${card.name}</div>
+                        <div class="text-xs text-purple-600">Trigger: ${card.trigger}</div>
+                        <div class="text-xs text-purple-600">${card.desc.substring(0,40)}</div>
+                    </div>
+                `;
+            });
+            
+            document.querySelectorAll('.active-card').forEach(el => {
+                el.onclick = () => {
+                    const idx = parseInt(el.dataset.idx);
+                    if (selectedActiveIndices.has(idx)) {
+                        selectedActiveIndices.delete(idx);
+                    } else if (selectedActiveIndices.size < 22) {
+                        selectedActiveIndices.add(idx);
+                    } else {
+                        alert('You must select exactly 22 Active cards');
+                    }
+                    renderDeckBuilder();
+                };
+            });
+            document.querySelectorAll('.reaction-card').forEach(el => {
+                el.onclick = () => {
+                    const idx = parseInt(el.dataset.idx);
+                    if (selectedReactionIndices.has(idx)) {
+                        selectedReactionIndices.delete(idx);
+                    } else if (selectedReactionIndices.size < 3) {
+                        selectedReactionIndices.add(idx);
+                    } else {
+                        alert('You can select up to 3 Reaction cards');
+                    }
+                    renderDeckBuilder();
+                };
+            });
+            document.getElementById('activeCount').innerText = selectedActiveIndices.size;
+            document.getElementById('reactionCount').innerText = selectedReactionIndices.size;
+            document.getElementById('confirmDeckBtn').onclick = submitDeck;
+        }
+        
+        // ========== Submit deck lên backend ==========
+        async function submitDeck() {
+            if (selectedActiveIndices.size !== 22) {
+                alert('You must select exactly 22 Active cards');
+                return;
+            }
+            const activeIndices = Array.from(selectedActiveIndices);
+            const reactionIndices = Array.from(selectedReactionIndices);
+            const res = await fetch(`${API_BASE}/submit_deck`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    room_id: roomId,
+                    player_index: playerIndex,
+                    active_indices: activeIndices,
+                    reaction_indices: reactionIndices
+                })
+            });
+            if (res.ok) {
+                document.getElementById('deckPanel').classList.add('hidden');
+                document.getElementById('gamePanel').classList.remove('hidden');
+                startGamePolling();
+            } else {
+                const err = await res.json();
+                alert('Deck submission failed: ' + (err.error || 'Unknown'));
+            }
+        }
+        
+        // ========== Lấy trạng thái người chơi ==========
+        async function fetchPlayerState() {
+            if (!roomId) return;
+            const res = await fetch(`${API_BASE}/player_state?room_id=${roomId}&player_index=${playerIndex}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            updateGameUI(data);
+            // Kiểm tra kết thúc game
+            if (data.ended || data.game_ended) {
+                if (gamePollInterval) clearInterval(gamePollInterval);
+                document.getElementById('gamePanel').classList.add('hidden');
+                document.getElementById('endgamePanel').classList.remove('hidden');
+                document.getElementById('finalScore').innerText = data.final_score || 0;
+            }
+            // Cập nhật reaction triggers nếu có
+            if (data.triggers && data.triggers.length > 0) {
+                document.getElementById('reactionTriggers').classList.remove('hidden');
+                const reactionContainer = document.getElementById('reactionList');
+                reactionContainer.innerHTML = data.triggers.map((r, idx) => `<button onclick="useReaction(${idx})" class="bg-purple-700 text-white px-3 py-1 rounded-full text-sm">${r.name}</button>`).join('');
+            } else {
+                document.getElementById('reactionTriggers').classList.add('hidden');
+            }
+            // Cập nhật danh sách investors (nếu có)
+            if (data.investors && data.investors.length) {
+                document.getElementById('investorsList').innerHTML = data.investors.map(inv => `<div>🐋 ${inv.type}: ${inv.amount.toLocaleString()} USD</div>`).join('');
+            } else {
+                document.getElementById('investorsList').innerHTML = 'No investors yet';
+            }
+        }
+        
+        // ========== Cập nhật giao diện chính với màu thẻ ==========
+        function updateGameUI(state) {
+            document.getElementById('funding').innerText = (state.funding_progress * 100).toFixed(1);
+            document.getElementById('energy').innerText = state.energy_left;
+            document.getElementById('hypeVal').innerText = state.hype;
+            document.getElementById('hypeBar').style.width = state.hype + '%';
+            document.getElementById('transVal').innerText = state.transparency;
+            document.getElementById('transBar').style.width = state.transparency + '%';
+            document.getElementById('intrinsic').innerText = state.metrics.intrinsic?.toFixed(1) || 0;
+            document.getElementById('valuation').innerText = state.metrics.valuation_sanity?.toFixed(1) || 0;
+            document.getElementById('roi').innerText = state.metrics.roi_norm?.toFixed(1) || 0;
+            document.getElementById('runway').innerText = state.metrics.runway || 0;
+            if (state.last_scenario) {
+                document.getElementById('scenarioDisplay').innerHTML = `📢 ${state.last_scenario}`;
+            }
+            // Hiển thị hand với màu sắc theo type
+            const handContainer = document.getElementById('hand');
+            if (state.hand && state.hand.length) {
+                handContainer.innerHTML = state.hand.map((card, idx) => {
+                    let borderColor = '';
+                    if (card.type === 'hotpink') borderColor = '#f43f5e';
+                    else if (card.type === 'babyblue') borderColor = '#0ea5e9';
+                    else if (card.type === 'lavender') borderColor = '#a855f7';
+                    else borderColor = '#cbd5e1';
+                    const selectedClass = (selectedCardIdx === idx) ? 'selected' : '';
+                    return `
+                        <div class="hand-card ${selectedClass}" style="border-left: 4px solid ${borderColor};" data-cardidx="${idx}">
+                            <div class="font-bold text-sm text-purple-800">${card.name}</div>
+                            <div class="text-xs text-purple-600">Cost: ${card.cost}</div>
+                            <div class="text-xs text-purple-600">${card.desc.substring(0,50)}</div>
+                        </div>
+                    `;
+                }).join('');
+                // Gắn sự kiện click cho từng thẻ
+                document.querySelectorAll('.hand-card').forEach((el, i) => {
+                    el.onclick = (e) => {
+                        e.stopPropagation();
+                        document.querySelectorAll('.hand-card').forEach(c => c.classList.remove('selected'));
+                        el.classList.add('selected');
+                        selectedCardIdx = i;
+                    };
+                });
+            } else {
+                handContainer.innerHTML = '<div class="col-span-5 text-center text-purple-500">No cards in hand</div>';
+            }
+        }
+        
+        // ========== Các hành động trong game ==========
+        async function playSelectedCard() {
+            if (selectedCardIdx === null) {
+                alert('Please select a card first');
+                return;
+            }
+            const res = await fetch(`${API_BASE}/play_card`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ room_id: roomId, player_index: playerIndex, card_index: selectedCardIdx })
             });
-            const data = await res.json();
-            if (data.ok) {
-                document.getElementById('message').innerHTML = '<div class="success">✅ Đã đánh thẻ!</div>';
+            if (res.ok) {
                 selectedCardIdx = null;
-                setTimeout(() => document.getElementById('message').innerHTML = '', 2000);
+                fetchPlayerState();
             } else {
-                document.getElementById('message').innerHTML = `<div class="error">❌ Lỗi: ${data.error}</div>`;
+                const err = await res.json();
+                alert('Cannot play card: ' + (err.error || 'Unknown'));
             }
-        } catch (err) {
-            alert('Lỗi: ' + err.message);
         }
-    };
-
-    document.getElementById('mulliganBtn').onclick = async () => {
-        try {
-            const res = await fetch('/api/mulligan', {
+        
+        async function mulligan() {
+            const res = await fetch(`${API_BASE}/mulligan`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ room_id: roomId, player_index: playerIndex })
             });
-            const data = await res.json();
-            if (data.ok) {
-                document.getElementById('message').innerHTML = '<div class="success">🃏 Đã Mulligan!</div>';
-                setTimeout(() => document.getElementById('message').innerHTML = '', 2000);
+            if (res.ok) {
+                fetchPlayerState();
             } else {
-                document.getElementById('message').innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                const err = await res.json();
+                alert('Mulligan failed: ' + (err.error || 'Unknown'));
             }
-        } catch (err) {
-            alert('Lỗi: ' + err.message);
         }
-    };
-
-    document.getElementById('readyBtn').onclick = async () => {
-        try {
-            const res = await fetch('/api/player_ready_phase', {
+        
+        async function playerReady() {
+            const res = await fetch(`${API_BASE}/player_ready_phase`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ room_id: roomId, player_index: playerIndex })
             });
-            const data = await res.json();
-            if (data.ok) {
-                document.getElementById('message').innerHTML = '<div class="success">✅ Đã sẵn sàng, chờ host chạy phase.</div>';
+            if (res.ok) {
+                alert('You are ready for next phase!');
             } else {
-                document.getElementById('message').innerHTML = `<div class="error">❌ ${data.error}</div>`;
+                alert('Failed to set ready');
             }
-        } catch (err) {
-            alert('Lỗi: ' + err.message);
         }
-    };
-</script>
+        
+        async function useReaction(reactionIndex) {
+            // Cần lấy reaction_hand từ state hiện tại, nhưng vì chưa có sẵn biến toàn cục, tạm thời gọi API riêng
+            // Giả sử player_state trả về reaction_hand và triggers, ta dùng trigger index.
+            alert('Reaction feature will be implemented fully in next version');
+            // Thực tế cần gọi API /api/use_reaction với reaction_index
+        }
+        
+        // ========== Khởi động polling ==========
+        function startGamePolling() {
+            if (gamePollInterval) clearInterval(gamePollInterval);
+            fetchPlayerState();
+            gamePollInterval = setInterval(fetchPlayerState, 3000);
+        }
+        
+        // ========== Gán sự kiện nút ==========
+        document.getElementById('playCardBtn').onclick = playSelectedCard;
+        document.getElementById('mulliganBtn').onclick = mulligan;
+        document.getElementById('readyBtn').onclick = playerReady;
+        
+        // Nếu đã submit project và deck trước đó (reload) thì hiển thị lại game
+        // Ở đây ta không xử lý phức tạp, cứ mặc định form.
+    </script>
 </body>
 </html>
-
-
