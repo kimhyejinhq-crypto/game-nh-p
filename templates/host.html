@@ -22,7 +22,6 @@
             margin-bottom: 24px;
             border: 1px solid rgba(255, 255, 255, 0.6);
             box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
-            transition: all 0.2s;
         }
         button { 
             background: linear-gradient(95deg, #f48fb1, #ba6bff, #5e9bff);
@@ -80,6 +79,9 @@
         h2, h3 { color: #2e1a47; }
         .floating-switch { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
         .data-empty { color: #94a3b8; text-align: center; padding: 20px; font-style: italic; }
+        .deck-status { font-size: 12px; margin-left: 8px; }
+        .deck-ready { color: #10b981; }
+        .deck-not-ready { color: #f59e0b; }
     </style>
 </head>
 <body>
@@ -121,7 +123,13 @@
                 <span>🕒 Phase: <strong><span id="currentPhase">-</span></strong> / <strong><span id="maxPhase">-</span></strong></span>
                 <span>🎯 Status: <strong><span id="gameStatus">Đang tải...</span></strong></span>
             </div>
-            <div class="flex">
+            
+            <!-- Nút Force Auto Deck (chỉ hiển thị khi đang ở choosing_deck) -->
+            <div class="flex" style="margin-top: 12px;">
+                <button id="forceAutoDeckBtn" onclick="forceAutoDeck()" style="background: #ef4444; display: none;">⚡ FORCE AUTO-SELECT DECK FOR ALL</button>
+            </div>
+            
+            <div class="flex" style="gap: 12px; margin-bottom: 18px; margin-top: 12px;">
                 <label>📜 Phase archive:</label>
                 <select id="phaseSelect" onchange="showPhaseDetails()"><option>-- Chưa có dữ liệu --</option></select>
             </div>
@@ -257,9 +265,19 @@
         const statusSpan = document.getElementById('gameStatus');
         if (roomData.ended) { statusSpan.innerHTML = '🏁 ENDED'; statusSpan.className = 'error'; }
         else if (roomData.currentPhase >= roomData.maxPhase) { statusSpan.innerHTML = '🏆 COMPLETED'; statusSpan.className = 'error'; }
-        else { statusSpan.innerHTML = '🔥 IN PROGRESS'; statusSpan.className = 'success'; }
+        else if (roomData.status === 'choosing_deck') { statusSpan.innerHTML = '📦 CHỌN DECK'; statusSpan.className = 'success'; }
+        else if (roomData.status === 'playing') { statusSpan.innerHTML = '🔥 IN PROGRESS'; statusSpan.className = 'success'; }
+        else { statusSpan.innerHTML = '⏳ WAITING'; statusSpan.className = 'loading-placeholder'; }
 
-        const active = !roomData.ended && roomData.currentPhase < roomData.maxPhase;
+        // Hiển thị nút Force Auto Deck
+        const forceBtn = document.getElementById('forceAutoDeckBtn');
+        if (roomData.status === 'choosing_deck' && !roomData.game_started) {
+            forceBtn.style.display = 'inline-block';
+        } else {
+            forceBtn.style.display = 'none';
+        }
+
+        const active = !roomData.ended && roomData.currentPhase < roomData.maxPhase && roomData.status === 'playing';
         document.getElementById('runPhaseBtn').disabled = !active;
         document.getElementById('eventBtn').disabled = !active;
         document.getElementById('resetPhaseBtn').disabled = !active;
@@ -274,9 +292,12 @@
                 const isEnded = p.status === 'ended';
                 const cardClass = isJoined ? 'player-card-joined' : (isEnded ? 'player-card-ended' : 'player-card-not-joined');
                 const fundingPercent = ((p.funding||0)*100).toFixed(1);
+                const deckStatus = p.deck_ready ? '✅ Ready' : '⏳ Pending';
+                const deckClass = p.deck_ready ? 'deck-ready' : 'deck-not-ready';
                 html += `<div class="rank-card ${cardClass}">
                     <h3>${idx+1}. ${p.name || `Player ${p.id}`}
                         <span class="player-join-tag ${isJoined ? 'joined' : (isEnded ? 'joined' : 'waiting')}">${isJoined ? 'Active' : (isEnded ? 'Finished' : 'Not Joined')}</span>
+                        ${roomData.status === 'choosing_deck' ? `<span class="deck-status ${deckClass}">📦 ${deckStatus}</span>` : ''}
                     </h3>
                     <div class="player-funding">💰 Funding: ${fundingPercent}%</div>
                     <div class="funding-bar"><div class="funding-bar-fill" style="width: ${fundingPercent}%;"></div></div>
@@ -345,6 +366,24 @@
 
     function showPhaseDetails() { if (currentRoomId) fetchAndUpdateUI(); }
 
+    async function forceAutoDeck() {
+        if (!currentRoomId) return;
+        if (!confirm('Force auto-select deck cho tất cả người chơi chưa chọn? Họ sẽ được random deck.')) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/force_auto_deck`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: currentRoomId })
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || 'Force failed');
+            alert(`✅ Đã force auto deck cho ${data.forced_count} người chơi.`);
+            await fetchAndUpdateUI();
+        } catch (err) {
+            alert(`❌ Lỗi: ${err.message}`);
+        }
+    }
+
     async function nextPhase() {
         if (!currentRoomId) return;
         try {
@@ -391,6 +430,7 @@
     function toggleView() { if (currentRoomId) window.open(`/play/${currentRoomId}/0`, '_blank'); else alert('Chưa có phòng nào được tạo'); }
 
     window.createRoom = createRoom;
+    window.forceAutoDeck = forceAutoDeck;
     window.nextPhase = nextPhase;
     window.addRandomEvent = addRandomEvent;
     window.resetCurrentPhase = resetCurrentPhase;
