@@ -1,188 +1,268 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Host Startup Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Startup Game · Host Dashboard</title>
     <style>
-        * { box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
-        body { background: #0b1120; color: #eef2ff; padding: 20px; margin: 0; }
-        .container { max-width: 1200px; margin: auto; }
-        .panel { background: #1e293b; border-radius: 24px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-        button { background: #ec4899; border: none; padding: 10px 24px; border-radius: 40px; font-weight: bold; cursor: pointer; color: white; font-size: 1rem; transition: 0.2s; }
-        button:hover { background: #be185d; transform: scale(1.02); }
-        .flex { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .rankings { display: grid; gap: 12px; margin-top: 15px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-        .rankAC-card { background: #0f172a; border-radius: 20px; padding: 16px; border-left: 4px solid #ec4899; transition: 0.1s; }
-        .rank-card h3 { margin: 0 0 8px 0; color: #fbcfe8; }
-        .logs { background: #00000066; border-radius: 16px; padding: 12px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 0.8rem; margin-top: 15px; white-space: pre-wrap; }
-        .link-item { background: #0f172a; padding: 10px 12px; border-radius: 14px; margin-bottom: 8px; word-break: break-all; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .link-item a { color: #ec4899; text-decoration: none; }
-        .copy-link-btn { background: #3b82f6; padding: 4px 12px; font-size: 0.75rem; margin: 0; }
-        .copy-link-btn:hover { background: #2563eb; }
-        input, select { background: #0f172a; border: 1px solid #334155; padding: 8px 12px; border-radius: 12px; color: white; margin: 0 5px; }
-        label { font-weight: 500; }
-        .error-msg { color: #f87171; margin-top: 10px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #fce4ec 0%, #e1d5e7 50%, #c5d9f0 100%);
+            color: #1e1b2b;
+            padding: 20px; 
+            min-height: 100vh;
+        }
+        .container { max-width: 1280px; margin: 0 auto; }
+        .panel { 
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            border-radius: 1.5rem;
+            padding: 20px; 
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+        }
+        button { 
+            background: linear-gradient(95deg, #f48fb1, #ba6bff, #5e9bff);
+            color: white; 
+            border: none; 
+            padding: 10px 24px; 
+            border-radius: 40px; 
+            cursor: pointer; 
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.25s;
+        }
+        button:hover { 
+            transform: scale(0.98);
+            box-shadow: 0 8px 20px rgba(156, 39, 176, 0.3);
+        }
+        button:disabled { opacity: 0.55; cursor: not-allowed; }
+        input, select { 
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #c9b1e6;
+            padding: 8px 12px; 
+            border-radius: 12px; 
+            margin: 0 5px;
+        }
+        .rankings { display: grid; gap: 14px; margin-top: 15px; }
+        .rank-card { background: rgba(255,255,255,0.85); border-radius: 1.2rem; padding: 14px; border-left: 4px solid #ec4899; }
+        .player-card-joined { background: rgba(34,197,94,0.12); border-left-color: #22c55e; }
+        .player-card-not-joined { background: #ffffffdd; border-left-color: #94a3b8; }
+        .funding-bar { width: 100%; height: 10px; background: #e2d4f0; border-radius: 999px; overflow: hidden; margin-top: 4px; }
+        .funding-bar-fill { height: 100%; background: linear-gradient(90deg, #facc15, #f59e0b); border-radius: 999px; }
+        .logs { background: rgba(0,0,0,0.06); border-radius: 1rem; padding: 14px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; }
+        .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .link-item { background: rgba(255,255,255,0.7); padding: 12px; border-radius: 16px; margin-bottom: 8px; word-break: break-all; }
+        .success { color: #16a34a; font-weight: 700; }
+        .error { color: #dc2626; font-weight: 700; }
+        .metric-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #f3e5ff; color: #4a2b7a; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div id="setupPanel" class="panel">
-        <h2>🎮 TẠO PHÒNG CHƠI</h2>
-        <div class="flex">
-            <label>Số người chơi (2-10):</label>
-            <input type="number" id="numPlayers" min="2" max="10" value="4">
-            <button id="createRoomBtn">🚀 Tạo phòng</button>
-        </div>
-        <div id="createError" class="error-msg"></div>
+    <div class="panel">
+        <h2>✨ Startup Game - Host Control</h2>
+        <div id="connectionStatus" style="padding: 8px; border-radius: 20px;">🔌 Đang kết nối...</div>
     </div>
 
-    <div id="gamePanel" style="display:none;" class="panel">
-        <h2>🏠 PHÒNG: <span id="roomId"></span></h2>
-        <p><strong>🔗 Link mời người chơi (copy từng link gửi cho từng người):</strong></p>
-        <div id="joinLinksList" style="background: #0f172a; border-radius: 16px; padding: 12px; margin-bottom: 16px;"></div>
-        <div class="flex" style="justify-content: space-between;">
-            <span>👥 Trạng thái: <strong id="playerCount"></strong> / <strong id="maxPlayers"></strong> đã tham gia</span>
-            <span>🕒 Phase hiện tại: <strong id="currentPhase">0</strong></span>
+    <div class="panel" id="setupPanel">
+        <h2>🎮 Create New Room</h2>
+        <div class="flex">
+            <label>🏷️ Room name:</label>
+            <input type="text" id="roomName" value="Startup Arena">
+            <label>👥 Players:</label>
+            <input type="number" id="numPlayers" min="2" max="10" value="4">
+            <button onclick="createRoom()">🚀 CREATE ROOM</button>
         </div>
-        <h3>🏆 BẢNG XẾP HẠNG</h3>
-        <div id="rankings" class="rankings">Đang tải...</div>
-        <div id="logsArea" class="logs"></div>
-        <div id="phaseControl" style="margin-top: 15px;">
-            <button id="runPhaseBtn" style="display:none;">▶ CHẠY PHASE TIẾP THEO</button>
-            <p id="waitingMsg" style="display:none; color: #facc15;">⏳ Đợi tất cả người chơi bấm "SẴN SÀNG"</p>
+    </div>
+
+    <div class="panel" id="gamePanel" style="display:none;">
+        <h2>🏠 <span id="roomNameDisplay">---</span> · ID: <span id="roomId">---</span></h2>
+
+        <div class="panel">
+            <h3>🔗 Player Join Links</h3>
+            <div id="joinLinksList">Loading...</div>
+        </div>
+
+        <div class="panel">
+            <h3>⏱️ Game Progress</h3>
+            <div class="flex">
+                <span>👥 <strong id="playerCount">0</strong> / <span id="maxPlayers">0</span></span>
+                <span>🕒 Phase: <strong id="currentPhase">-</strong> / <strong id="maxPhase">-</strong></span>
+                <span>🎯 Status: <strong id="gameStatus">-</strong></span>
+            </div>
+            <div class="flex" style="margin-top: 10px;">
+                <button onclick="nextPhase()" id="runPhaseBtn" disabled>▶ NEXT PHASE</button>
+                <button onclick="addRandomEvent()" id="eventBtn" disabled>🎲 RANDOM EVENT</button>
+                <button onclick="resetCurrentPhase()" id="resetPhaseBtn" disabled>🔄 RESET PHASE</button>
+                <button onclick="endGame()" id="endGameBtn" disabled>⛔ END GAME</button>
+                <button onclick="resetGame()" id="resetGameBtn">🔄 RESET GAME</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>📜 Event Log</h3>
+            <div id="logsArea" class="logs">No events yet</div>
+        </div>
+
+        <div class="panel">
+            <h3>🏆 Leaderboard</h3>
+            <div id="rankings" class="rankings">Loading...</div>
         </div>
     </div>
 </div>
 
 <script>
-    let roomId = null;
-    let interval = null;
+    const API_BASE = window.location.origin + '/api';
+    let currentRoomId = null;
+    let pollInterval = null;
 
-    document.getElementById('createRoomBtn').onclick = async () => {
-        let num = parseInt(document.getElementById('numPlayers').value);
-        if (isNaN(num) || num < 2 || num > 10) {
-            document.getElementById('createError').innerText = 'Số người chơi phải từ 2 đến 10';
-            return;
-        }
-        document.getElementById('createError').innerText = '';
-        try {
-            let res = await fetch('/api/create_room', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({num_players: num})
-            });
-            let data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Không tạo được phòng');
-            roomId = data.room_id;
-
-            let linksHtml = '';
-            data.join_links.forEach((link, idx) => {
-                linksHtml += `<div class="link-item">
-                                🎮 Người chơi ${idx+1}: <a href="${link}" target="_blank">${link}</a>
-                                <button class="copy-link-btn" data-link="${link}" style="margin-left: 10px;">Sao chép</button>
-                              </div>`;
-            });
-            document.getElementById('joinLinksList').innerHTML = linksHtml;
-
-            document.querySelectorAll('.copy-link-btn').forEach(btn => {
-                btn.onclick = () => {
-                    const link = btn.getAttribute('data-link');
-                    navigator.clipboard.writeText(link).then(() => alert('Đã sao chép link'));
-                };
-            });
-
-            document.getElementById('roomId').innerText = roomId;
-            document.getElementById('maxPlayers').innerText = num;
-            document.getElementById('setupPanel').style.display = 'none';
-            document.getElementById('gamePanel').style.display = 'block';
-            startPolling();
-        } catch (err) {
-            document.getElementById('createError').innerText = err.message;
-        }
-    };
-
-    async function startPolling() {
-        if (interval) clearInterval(interval);
-        interval = setInterval(async () => {
-            try {
-                let res = await fetch(`/api/host_state?room_id=${roomId}`);
-                if (!res.ok) throw new Error('Network error');
-                let state = await res.json();
-                document.getElementById('playerCount').innerText = state.players_joined;
-                document.getElementById('currentPhase').innerText = state.phase;
-                if (state.rankings) {
-                    let html = '';
-                    state.rankings.forEach(p => {
-                        let endedClass = p.status === 'ended' ? 'style="opacity:0.6; border-left-color:#6b7280;"' : '';
-                        html += `<div class="rank-card" ${endedClass}>
-                            <h3>${p.name}</h3>
-                            <div>💰 Funding: ${(p.funding * 100).toFixed(1)}%</div>
-                            <div>📊 Hype: ${p.hype} | Transparency: ${p.transparency}</div>
-                            <div>🏅 Điểm: ${p.score?.toFixed(2) || '0.00'}</div>
-                            <div>📏 Scale: ${p.scale || '?'} | Phase: ${p.current_phase}/${p.max_phase}</div>
-                            ${p.status === 'ended' ? '<div>✅ Đã kết thúc</div>' : ''}
-                        </div>`;
-                    });
-                    document.getElementById('rankings').innerHTML = html;
-                }
-                if (state.logs && state.logs.length) {
-                    let logsHtml = state.logs.map(l => `<div>${l}</div>`).join('');
-                    document.getElementById('logsArea').innerHTML = logsHtml;
-                    let logsDiv = document.getElementById('logsArea');
-                    logsDiv.scrollTop = logsDiv.scrollHeight;
-                }
-                if (state.status === 'playing') {
-                    let btn = document.getElementById('runPhaseBtn');
-                    let waitingMsg = document.getElementById('waitingMsg');
-                    if (state.all_ready) {
-                        btn.style.display = 'inline-block';
-                        waitingMsg.style.display = 'none';
-                        btn.innerText = `▶ CHẠY PHASE ${state.phase}`;
-                    } else {
-                        btn.style.display = 'none';
-                        waitingMsg.style.display = 'block';
-                        waitingMsg.innerText = `⏳ Đợi tất cả người chơi bấm "SẴN SÀNG" (phase ${state.phase})`;
-                    }
-                } else if (state.status === 'ended') {
-                    document.getElementById('runPhaseBtn').style.display = 'none';
-                    document.getElementById('waitingMsg').style.display = 'none';
-                    if (state.game_ended) {
-                        alert('🏆 Game đã kết thúc! 🏆');
-                        clearInterval(interval);
-                    }
-                } else {
-                    document.getElementById('runPhaseBtn').style.display = 'none';
-                    document.getElementById('waitingMsg').style.display = 'none';
-                }
-            } catch (err) {
-                console.error('Polling error:', err);
-            }
-        }, 2000);
+    async function createRoom() {
+        const name = document.getElementById('roomName').value;
+        const maxPlayers = parseInt(document.getElementById('numPlayers').value);
+        const res = await fetch(`${API_BASE}/rooms`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, maxPlayers})
+        });
+        if (!res.ok) return alert('Create room failed');
+        const data = await res.json();
+        currentRoomId = data.id;
+        sessionStorage.setItem('roomId', currentRoomId);
+        document.getElementById('setupPanel').style.display = 'none';
+        document.getElementById('gamePanel').style.display = 'block';
+        document.getElementById('roomId').innerText = currentRoomId;
+        document.getElementById('roomNameDisplay').innerText = name;
+        startPolling();
     }
 
-    document.getElementById('runPhaseBtn').onclick = async () => {
+    async function fetchRoom() {
+        if (!currentRoomId) return;
         try {
-            let res = await fetch('/api/run_phase', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({room_id: roomId})
-            });
-            let data = await res.json();
-            if (data.ended) {
-                alert('🏆 GAME KẾT THÚC! 🏆');
-                clearInterval(interval);
-            } else {
-                document.getElementById('runPhaseBtn').style.display = 'none';
-                document.getElementById('waitingMsg').style.display = 'block';
-                document.getElementById('waitingMsg').innerText = `⏳ Đợi người chơi ready cho phase tiếp theo...`;
-            }
-        } catch (err) {
-            alert('Lỗi chạy phase: ' + err.message);
+            const res = await fetch(`${API_BASE}/rooms/${currentRoomId}`);
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            updateUI(data);
+        } catch(e) {
+            document.getElementById('connectionStatus').innerHTML = '⚠️ Lost connection';
         }
-    };
+    }
+
+    function updateUI(room) {
+        document.getElementById('playerCount').innerText = room.joinedPlayers;
+        document.getElementById('maxPlayers').innerText = room.maxPlayers;
+        document.getElementById('currentPhase').innerText = room.currentPhase;
+        document.getElementById('maxPhase').innerText = room.maxPhase;
+        const statusSpan = document.getElementById('gameStatus');
+        if (room.ended) statusSpan.innerHTML = '🏁 ENDED';
+        else if (room.currentPhase >= room.maxPhase) statusSpan.innerHTML = '🏆 COMPLETED';
+        else statusSpan.innerHTML = '🔥 IN PROGRESS';
+
+        const isActive = !room.ended && room.currentPhase < room.maxPhase;
+        document.getElementById('runPhaseBtn').disabled = !isActive;
+        document.getElementById('eventBtn').disabled = !isActive;
+        document.getElementById('resetPhaseBtn').disabled = !isActive;
+        document.getElementById('endGameBtn').disabled = room.ended;
+
+        // Join links
+        if (room.joinLinks) {
+            let html = '';
+            room.joinLinks.forEach(link => {
+                const joined = room.players.find(p => p.id === link.playerIndex)?.status !== 'not_joined';
+                html += `<div class="link-item"><strong>${link.playerName}</strong> ${joined ? '✅ Joined' : '⏳ Waiting'}<br>
+                <input type="text" value="${link.realLink}" style="width:70%; font-size:12px;" readonly>
+                <button onclick="copy('${link.realLink}')">Copy</button></div>`;
+            });
+            document.getElementById('joinLinksList').innerHTML = html;
+        }
+
+        // Logs
+        if (room.logs && room.logs.length) {
+            document.getElementById('logsArea').innerHTML = room.logs.slice().reverse().map(l => `📌 ${l}`).join('<br>');
+        } else {
+            document.getElementById('logsArea').innerHTML = 'No events yet';
+        }
+
+        // Rankings
+        if (room.players) {
+            const sorted = [...room.players].sort((a,b)=> (b.score||0)-(a.score||0));
+            let rankHtml = '';
+            sorted.forEach((p, i) => {
+                const fundingPercent = ((p.funding||0)*100).toFixed(1);
+                rankHtml += `
+                    <div class="rank-card ${p.status === 'active' ? 'player-card-joined' : 'player-card-not-joined'}">
+                        <h3>${i+1}. ${p.name} <span>${p.status === 'active' ? '🎮 Playing' : (p.status==='ended'?'🏁 Done':'⌛ Waiting')}</span></h3>
+                        <div>💰 Funding: ${fundingPercent}%</div>
+                        <div class="funding-bar"><div class="funding-bar-fill" style="width: ${fundingPercent}%;"></div></div>
+                        <div class="flex" style="margin-top:8px;">
+                            <span class="metric-tag">📈 Hype ${p.hype||0}</span>
+                            <span class="metric-tag">🔍 Trans ${p.transparency||0}</span>
+                            <span class="metric-tag">🏅 Score ${(p.score||0).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('rankings').innerHTML = rankHtml;
+        }
+    }
+
+    async function nextPhase() {
+        if (!currentRoomId) return;
+        const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/next-phase`, {method: 'POST'});
+        if (res.ok) fetchRoom();
+        else alert('Cannot advance phase');
+    }
+    async function addRandomEvent() {
+        if (!currentRoomId) return;
+        const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/random-event`, {method: 'POST'});
+        if (res.ok) fetchRoom();
+    }
+    async function resetCurrentPhase() {
+        if (!currentRoomId) return;
+        await fetch(`${API_BASE}/rooms/${currentRoomId}/reset-phase`, {method: 'POST'});
+        fetchRoom();
+    }
+    async function endGame() {
+        if (!currentRoomId) return;
+        if (confirm('End game now?')) {
+            await fetch(`${API_BASE}/rooms/${currentRoomId}/end`, {method: 'POST'});
+            fetchRoom();
+        }
+    }
+    async function resetGame() {
+        if (!currentRoomId) return;
+        if (confirm('Reset entire game? All data lost.')) {
+            await fetch(`${API_BASE}/rooms/${currentRoomId}/reset`, {method: 'POST'});
+            fetchRoom();
+        }
+    }
+    function copy(text) { navigator.clipboard.writeText(text); alert('Copied!'); }
+
+    function startPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        fetchRoom();
+        pollInterval = setInterval(fetchRoom, 2500);
+    }
+
+    // Auto-load room if exists
+    const saved = sessionStorage.getItem('roomId');
+    if (saved) {
+        currentRoomId = saved;
+        document.getElementById('setupPanel').style.display = 'none';
+        document.getElementById('gamePanel').style.display = 'block';
+        startPolling();
+    }
+
+    window.createRoom = createRoom;
+    window.nextPhase = nextPhase;
+    window.addRandomEvent = addRandomEvent;
+    window.resetCurrentPhase = resetCurrentPhase;
+    window.endGame = endGame;
+    window.resetGame = resetGame;
+    window.copy = copy;
 </script>
 </body>
 </html>
-
-
