@@ -3,287 +3,341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Startup Game · Host Dashboard</title>
+    <title>Startup Game - Player</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #fce4ec 0%, #e1d5e7 50%, #c5d9f0 100%);
-            color: #1e1b2b;
-            padding: 20px; 
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #fce4ec, #e1d5e7, #c5d9f0);
+            padding: 20px;
             min-height: 100vh;
         }
-        .container { max-width: 1280px; margin: 0 auto; }
-        .panel { 
-            background: rgba(255, 255, 255, 0.92);
+        .container { max-width: 900px; margin: 0 auto; }
+        .card {
+            background: rgba(255,255,255,0.92);
             backdrop-filter: blur(8px);
             border-radius: 1.5rem;
-            padding: 20px; 
-            margin-bottom: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.15);
         }
-        button { 
+        button {
             background: linear-gradient(95deg, #f48fb1, #ba6bff, #5e9bff);
-            color: white; 
-            border: none; 
-            padding: 10px 24px; 
-            border-radius: 40px; 
-            cursor: pointer; 
-            font-size: 16px;
-            font-weight: 600;
-            margin-top: 10px;
-            transition: all 0.25s;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
         }
-        button:hover { transform: scale(0.98); box-shadow: 0 8px 20px rgba(156, 39, 176, 0.3); }
-        button:disabled { opacity: 0.55; cursor: not-allowed; }
-        input, select { background-color: rgba(255,255,255,0.95); border: 1px solid #c9b1e6; padding: 8px 12px; border-radius: 12px; margin: 0 5px; }
-        .rankings { display: grid; gap: 14px; margin-top: 15px; }
-        .rank-card { background: rgba(255,255,255,0.85); border-radius: 1.2rem; padding: 14px; border-left: 4px solid #ec4899; }
-        .player-card-joined { background: rgba(34,197,94,0.12); border-left-color: #22c55e; }
-        .player-card-not-joined { background: #ffffffdd; border-left-color: #94a3b8; }
-        .funding-bar { width: 100%; height: 10px; background: #e2d4f0; border-radius: 999px; overflow: hidden; margin-top: 4px; }
-        .funding-bar-fill { height: 100%; background: linear-gradient(90deg, #facc15, #f59e0b); border-radius: 999px; }
-        .logs { background: rgba(0,0,0,0.06); border-radius: 1rem; padding: 14px; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 13px; }
-        .flex { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .link-item { background: rgba(255,255,255,0.7); padding: 12px; border-radius: 16px; margin-bottom: 8px; word-break: break-all; }
-        .success { color: #16a34a; font-weight: 700; }
-        .error { color: #dc2626; font-weight: 700; }
-        .metric-tag { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: #f3e5ff; color: #4a2b7a; }
+        button:hover { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; }
+        input, select { padding: 8px 12px; border-radius: 12px; border: 1px solid #c9b1e6; margin: 5px 0; width: 100%; }
+        .flex { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .hand-card {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 0.5rem;
+            margin: 0.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .hand-card.selected {
+            background: #fce4ec;
+            border-left-width: 6px !important;
+        }
+        .deck-card {
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #facc15, #f59e0b);
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="panel">
-        <h2>✨ Startup Game - Host Control</h2>
-        <div id="connectionStatus" style="padding: 8px; border-radius: 20px;">🔌 Đang kết nối...</div>
+    <!-- Form nhập dự án -->
+    <div id="projectForm" class="card">
+        <h2 class="text-2xl font-bold text-purple-800">📝 Submit Your Project</h2>
+        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+            <div><label>Scale</label><select id="scale"><option>S (5 phases)</option><option selected>M (7 phases)</option><option>L (9 phases)</option></select></div>
+            <div><label>Target Funding (USD)</label><input type="number" id="targetFunding" placeholder="Auto"></div>
+            <div><label>Price (USD)</label><input type="number" id="price" value="35"></div>
+            <div><label>Owner Equity</label><input type="number" id="ownerEquity" value="50000"></div>
+            <div><label>Bank Loan</label><input type="number" id="bankLoan" value="30000"></div>
+            <div><label>Loan Rate (%)</label><input type="number" id="loanRate" value="8"></div>
+            <div><label>Fixed Cost/month</label><input type="number" id="fixedCost" value="15000"></div>
+            <div><label>Marketing Cost/month</label><input type="number" id="marketingCost" value="8000"></div>
+        </div>
+        <button onclick="submitProject()" class="w-full mt-4">🚀 SUBMIT PROJECT</button>
+        <div id="waitingMsg" class="text-center text-purple-700 mt-3 hidden">✅ Submitted! Waiting for deck selection...</div>
     </div>
 
-    <div class="panel" id="setupPanel">
-        <h2>🎮 Create New Room</h2>
+    <!-- Deck builder -->
+    <div id="deckPanel" class="card" style="display:none;">
+        <h2 class="text-2xl font-bold text-purple-800">🃏 Build Your Deck</h2>
+        <p>Choose <strong>22 Active cards</strong> (Hot Pink, Baby Blue, Capital) and up to <strong>3 Reaction cards</strong> (Yellow)</p>
+        <div id="deckBuilder" style="max-height: 500px; overflow-y: auto; margin: 16px 0;"></div>
+        <button onclick="submitDeck()" class="w-full">✅ CONFIRM DECK</button>
+    </div>
+
+    <!-- Gameplay -->
+    <div id="gamePanel" class="card" style="display:none;">
+        <div class="flex" style="justify-content: space-between;">
+            <h2 class="text-2xl font-bold text-purple-800">📊 Your Project</h2>
+            <div><span class="bg-purple-100 px-3 py-1 rounded-full">💰 <span id="funding">0</span>%</span> <span class="bg-purple-100 px-3 py-1 rounded-full">⚡ <span id="energy">3</span></span></div>
+        </div>
+        <div id="scenario" class="bg-pink-100 rounded-xl p-2 my-2 text-center">Waiting for event...</div>
+        <div class="flex" style="justify-content: space-between;">
+            <div style="flex:1">📈 Hype: <span id="hypeVal">50</span><div class="progress-bar"><div id="hypeBar" class="progress-fill" style="width:50%"></div></div></div>
+            <div style="flex:1">🔍 Transparency: <span id="transVal">50</span><div class="progress-bar"><div id="transBar" class="progress-fill" style="width:50%"></div></div></div>
+        </div>
+        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0;">
+            <div>Intrinsic: <span id="intrinsic">0</span></div><div>Valuation: <span id="valuation">0</span></div>
+            <div>ROI: <span id="roi">0</span></div><div>Runway: <span id="runway">0</span> mo</div>
+        </div>
+        <h3>Your Hand</h3>
+        <div id="hand" style="display: grid; grid-template-columns: repeat(5,1fr); gap: 6px; margin: 8px 0;"></div>
         <div class="flex">
-            <label>🏷️ Room name:</label>
-            <input type="text" id="roomName" value="Startup Arena">
-            <label>👥 Players:</label>
-            <input type="number" id="numPlayers" min="2" max="10" value="4">
-            <button onclick="createRoom()">🚀 CREATE ROOM</button>
+            <button onclick="playCard()" style="flex:1">▶ PLAY CARD</button>
+            <button onclick="mulligan()" style="flex:1">🔄 MULLIGAN</button>
+            <button onclick="readyPhase()" style="flex:1">✅ READY</button>
         </div>
-        <div id="existingRoomInfo" style="margin-top:10px; font-size:14px; color:#6b21a5;"></div>
+        <div id="reactionsArea" class="bg-amber-100 rounded p-2 mt-2 hidden">
+            <strong>⚡ Available Reactions</strong>
+            <div id="reactionList" class="flex flex-wrap gap-1 mt-1"></div>
+        </div>
+        <div class="bg-white/50 rounded p-2 mt-2 text-sm">🐋 Investors: <span id="investorList">None</span></div>
     </div>
 
-    <div class="panel" id="gamePanel" style="display:none;">
-        <h2>🏠 <span id="roomNameDisplay">---</span> · ID: <span id="roomId">---</span>
-            <button onclick="createNewRoom()" style="background: #9c27b0; padding: 5px 15px; font-size:14px;">➕ New Room</button>
-        </h2>
-
-        <div class="panel">
-            <h3>🔗 Player Join Links</h3>
-            <div id="joinLinksList">Loading...</div>
-        </div>
-
-        <div class="panel">
-            <h3>⏱️ Game Progress</h3>
-            <div class="flex">
-                <span>👥 <strong id="playerCount">0</strong> / <span id="maxPlayers">0</span></span>
-                <span>🕒 Phase: <strong id="currentPhase">-</strong> / <strong id="maxPhase">-</strong></span>
-                <span>🎯 Status: <strong id="gameStatus">-</strong></span>
-            </div>
-            <div class="flex" style="margin-top: 10px;">
-                <button onclick="startDeckPhase()" id="startDeckBtn" disabled>🎴 START DECK SELECTION</button>
-                <button onclick="nextPhase()" id="runPhaseBtn" disabled>▶ NEXT PHASE</button>
-                <button onclick="addRandomEvent()" id="eventBtn" disabled>🎲 RANDOM EVENT</button>
-                <button onclick="resetCurrentPhase()" id="resetPhaseBtn" disabled>🔄 RESET PHASE</button>
-                <button onclick="endGame()" id="endGameBtn" disabled>⛔ END GAME</button>
-                <button onclick="resetGame()" id="resetGameBtn">🔄 RESET GAME</button>
-            </div>
-        </div>
-
-        <div class="panel">
-            <h3>📜 Event Log</h3>
-            <div id="logsArea" class="logs">No events yet</div>
-        </div>
-
-        <div class="panel">
-            <h3>🏆 Leaderboard</h3>
-            <div id="rankings" class="rankings">Loading...</div>
-        </div>
+    <div id="endPanel" class="card text-center" style="display:none;">
+        <h2 class="text-3xl font-bold text-purple-800">GAME OVER</h2>
+        <div class="text-5xl font-bold text-pink-500 my-2"><span id="finalScore">0</span></div>
+        <button onclick="location.reload()">PLAY AGAIN</button>
     </div>
 </div>
 
 <script>
-    const API_BASE = window.location.origin + '/api';
-    let currentRoomId = null;
-    let pollInterval = null;
-    let autoStartedDeckPhase = false; // tránh gọi nhiều lần
+    const pathParts = window.location.pathname.split('/');
+    let roomId = pathParts[pathParts.length-2];
+    let playerIndex = parseInt(pathParts[pathParts.length-1]);
+    if (isNaN(playerIndex)) playerIndex = 0;
+    const API = window.location.origin + '/api';
 
-    async function createRoom() {
-        const name = document.getElementById('roomName').value;
-        const maxPlayers = parseInt(document.getElementById('numPlayers').value);
-        const res = await fetch(`${API_BASE}/rooms`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({name, maxPlayers})
+    let activeCards = [], reactionCards = [];
+    let selectedActive = new Set(), selectedReaction = new Set();
+    let selectedCardIdx = null;
+    let pollTimer = null;
+    let gameState = { hand: [], hype:50, transparency:50, funding:0, energy:3, metrics:{}, ended:false };
+
+    async function submitProject() {
+        const scale = document.getElementById('scale').value;
+        const targetOverride = parseFloat(document.getElementById('targetFunding').value);
+        let targetFunding = targetOverride || (scale==='S'?55000:(scale==='M'?170000:350000));
+        const project = {
+            scale, max_phase: scale==='S'?5:(scale==='M'?7:9), target_funding: targetFunding,
+            price: parseFloat(document.getElementById('price').value),
+            owner_equity: parseFloat(document.getElementById('ownerEquity').value),
+            loan: parseFloat(document.getElementById('bankLoan').value),
+            interest_rate: parseFloat(document.getElementById('loanRate').value),
+            fixed_cost: parseFloat(document.getElementById('fixedCost').value),
+            marketing_cost: parseFloat(document.getElementById('marketingCost').value),
+            available_cash: parseFloat(document.getElementById('ownerEquity').value) + parseFloat(document.getElementById('bankLoan').value),
+            hype:50, transparency:50, current_phase:0, funding_progress:0, total_invested:0, status:'active'
+        };
+        const res = await fetch(`${API}/submit_project`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({room_id:roomId, player_index:playerIndex, project})
         });
-        if (!res.ok) return alert('Create room failed');
+        if (res.ok) {
+            document.getElementById('projectForm').style.display = 'none';
+            document.getElementById('waitingMsg').classList.remove('hidden');
+            startPolling();
+        } else alert('Submit failed');
+    }
+
+    async function loadCardLists() {
+        const res = await fetch(`${API}/card_lists`);
         const data = await res.json();
-        currentRoomId = data.id;
-        sessionStorage.setItem('roomId', currentRoomId);
-        document.getElementById('setupPanel').style.display = 'none';
-        document.getElementById('gamePanel').style.display = 'block';
-        document.getElementById('roomId').innerText = currentRoomId;
-        document.getElementById('roomNameDisplay').innerText = name;
-        startPolling();
-        document.getElementById('existingRoomInfo').innerHTML = `Current room: ${currentRoomId} <button onclick="createNewRoom()" style="background:#7c3aed; padding:2px 10px;">Create another</button>`;
+        activeCards = data.active;
+        reactionCards = data.reaction;
+        renderDeckBuilder();
     }
 
-    function createNewRoom() {
-        if (confirm('Create a new room? Current room data will be lost.')) {
-            sessionStorage.removeItem('roomId');
-            window.location.reload();
-        }
-    }
-
-    async function fetchRoom() {
-        if (!currentRoomId) return;
-        try {
-            const res = await fetch(`${API_BASE}/rooms/${currentRoomId}`);
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            updateUI(data);
-            // Tự động bắt đầu deck phase khi đủ 2 người chơi và chưa bắt đầu
-            if (data.status === 'waiting_for_projects' && data.joinedPlayers >= 2 && !autoStartedDeckPhase) {
-                autoStartedDeckPhase = true;
-                console.log('Auto starting deck phase');
-                await startDeckPhase();
-            }
-        } catch(e) {
-            document.getElementById('connectionStatus').innerHTML = '⚠️ Lost connection';
-        }
-    }
-
-    function updateUI(room) {
-        document.getElementById('playerCount').innerText = room.joinedPlayers;
-        document.getElementById('maxPlayers').innerText = room.maxPlayers;
-        document.getElementById('currentPhase').innerText = room.currentPhase;
-        document.getElementById('maxPhase').innerText = room.maxPhase;
-        const statusSpan = document.getElementById('gameStatus');
-        if (room.ended) statusSpan.innerHTML = '🏁 ENDED';
-        else if (room.currentPhase >= room.maxPhase) statusSpan.innerHTML = '🏆 COMPLETED';
-        else statusSpan.innerHTML = room.status === 'waiting_for_projects' ? '⏳ Waiting for projects' : (room.status === 'choosing_deck' ? '🃏 Choosing decks' : '🔥 IN PROGRESS');
-
-        const isWaiting = room.status === 'waiting_for_projects';
-        const isChoosingDeck = room.status === 'choosing_deck';
-        const isPlaying = room.status === 'playing' && !room.ended;
-        
-        document.getElementById('startDeckBtn').disabled = !(isWaiting && room.joinedPlayers >= 2);
-        document.getElementById('runPhaseBtn').disabled = !isPlaying;
-        document.getElementById('eventBtn').disabled = !isPlaying;
-        document.getElementById('resetPhaseBtn').disabled = !isPlaying;
-        document.getElementById('endGameBtn').disabled = room.ended;
-
-        // Join links
-        if (room.joinLinks) {
-            let html = '';
-            room.joinLinks.forEach(link => {
-                const joined = room.players.find(p => p.id === link.playerIndex)?.status !== 'not_joined';
-                html += `<div class="link-item"><strong>${link.playerName}</strong> ${joined ? '✅ Joined' : '⏳ Waiting'}<br>
-                <input type="text" value="${link.realLink}" style="width:70%; font-size:12px;" readonly>
-                <button onclick="copy('${link.realLink}')">Copy</button></div>`;
-            });
-            document.getElementById('joinLinksList').innerHTML = html;
-        }
-
-        // Logs
-        if (room.logs && room.logs.length) {
-            document.getElementById('logsArea').innerHTML = room.logs.slice().reverse().map(l => `📌 ${l}`).join('<br>');
-        } else {
-            document.getElementById('logsArea').innerHTML = 'No events yet';
-        }
-
-        // Rankings
-        if (room.players) {
-            const sorted = [...room.players].sort((a,b)=> (b.score||0)-(a.score||0));
-            let rankHtml = '';
-            sorted.forEach((p, i) => {
-                const fundingPercent = ((p.funding||0)*100).toFixed(1);
-                rankHtml += `
-                    <div class="rank-card ${p.status === 'active' ? 'player-card-joined' : 'player-card-not-joined'}">
-                        <h3>${i+1}. ${p.name} <span>${p.status === 'active' ? '🎮 Playing' : (p.status==='ended'?'🏁 Done':'⌛ Waiting')}</span></h3>
-                        <div>💰 Funding: ${fundingPercent}%</div>
-                        <div class="funding-bar"><div class="funding-bar-fill" style="width: ${fundingPercent}%;"></div></div>
-                        <div class="flex" style="margin-top:8px;">
-                            <span class="metric-tag">📈 Hype ${p.hype||0}</span>
-                            <span class="metric-tag">🔍 Trans ${p.transparency||0}</span>
-                            <span class="metric-tag">🏅 Score ${(p.score||0).toFixed(2)}</span>
-                        </div>
-                    </div>
-                `;
-            });
-            document.getElementById('rankings').innerHTML = rankHtml;
-        }
-    }
-
-    async function startDeckPhase() {
-        const res = await fetch(`${API_BASE}/start_deck_phase`, {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ room_id: currentRoomId })
+    function renderDeckBuilder() {
+        const container = document.getElementById('deckBuilder');
+        let html = `<div><h3>Active Cards (choose 22)</h3><div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">`;
+        activeCards.forEach((card, idx) => {
+            let borderColor = card.type==='hotpink'?'#f97316':(card.type==='babyblue'?'#3b82f6':'#8b5cf6');
+            let bgColor = selectedActive.has(idx) ? (card.type==='hotpink'?'#ffe4e6':(card.type==='babyblue'?'#e0f2fe':'#f3e8ff')) : 'white';
+            html += `<div class="deck-card" data-idx="${idx}" style="border-left:4px solid ${borderColor}; background:${bgColor}; padding:6px; border-radius:8px;">
+                        <b>${card.name}</b> (${card.cost})<br><small>${card.desc.substring(0,40)}</small>
+                    </div>`;
         });
-        if (res.ok) fetchRoom();
-        else console.error('Cannot start deck phase');
+        html += `</div></div><div style="margin-top:16px;"><h3>Reaction Cards (up to 3)</h3><div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px;">`;
+        reactionCards.forEach((card, idx) => {
+            let bgColor = selectedReaction.has(idx) ? '#fef9c3' : 'white';
+            html += `<div class="deck-card" data-reaction-idx="${idx}" style="border-left:4px solid #eab308; background:${bgColor}; padding:6px; border-radius:8px;">
+                        <b>${card.name}</b><br><small>${card.trigger}</small>
+                    </div>`;
+        });
+        html += `</div></div>`;
+        container.innerHTML = html;
+        document.querySelectorAll('.deck-card[data-idx]').forEach(el => {
+            el.onclick = () => {
+                let idx = parseInt(el.dataset.idx);
+                if (selectedActive.has(idx)) selectedActive.delete(idx);
+                else if (selectedActive.size < 22) selectedActive.add(idx);
+                else alert('Need exactly 22 active cards');
+                renderDeckBuilder();
+            };
+        });
+        document.querySelectorAll('.deck-card[data-reaction-idx]').forEach(el => {
+            el.onclick = () => {
+                let idx = parseInt(el.dataset.reactionIdx);
+                if (selectedReaction.has(idx)) selectedReaction.delete(idx);
+                else if (selectedReaction.size < 3) selectedReaction.add(idx);
+                else alert('Max 3 reaction cards');
+                renderDeckBuilder();
+            };
+        });
     }
 
-    async function nextPhase() {
-        const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/next-phase`, {method: 'POST'});
-        if (res.ok) fetchRoom();
-        else alert('Cannot advance phase');
+    async function submitDeck() {
+        if (selectedActive.size !== 22) { alert('Select exactly 22 active cards'); return; }
+        const res = await fetch(`${API}/submit_deck`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                room_id:roomId, player_index:playerIndex,
+                active_indices: Array.from(selectedActive),
+                reaction_indices: Array.from(selectedReaction)
+            })
+        });
+        if (res.ok) {
+            document.getElementById('deckPanel').style.display = 'none';
+            document.getElementById('gamePanel').style.display = 'block';
+            startGamePolling();
+        } else alert('Deck submission failed');
     }
-    async function addRandomEvent() {
-        const res = await fetch(`${API_BASE}/rooms/${currentRoomId}/random-event`, {method: 'POST'});
-        if (res.ok) fetchRoom();
-    }
-    async function resetCurrentPhase() {
-        await fetch(`${API_BASE}/rooms/${currentRoomId}/reset-phase`, {method: 'POST'});
-        fetchRoom();
-    }
-    async function endGame() {
-        if (confirm('End game now?')) {
-            await fetch(`${API_BASE}/rooms/${currentRoomId}/end`, {method: 'POST'});
-            fetchRoom();
+
+    async function fetchPlayerState() {
+        const res = await fetch(`${API}/player_state?room_id=${roomId}&player_index=${playerIndex}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        // Chuyển đổi panel theo trạng thái
+        if (data.status === 'choosing_deck' && document.getElementById('deckPanel').style.display === 'none') {
+            document.getElementById('projectForm').style.display = 'none';
+            document.getElementById('waitingMsg').classList.add('hidden');
+            document.getElementById('deckPanel').style.display = 'block';
+            if (activeCards.length===0) await loadCardLists();
+        }
+        if (data.status === 'playing' && document.getElementById('gamePanel').style.display === 'none') {
+            document.getElementById('deckPanel').style.display = 'none';
+            document.getElementById('gamePanel').style.display = 'block';
+            startGamePolling();
+        }
+        if (data.status === 'playing' || data.status === 'ended') {
+            updateGameUI(data);
+            if (data.ended) {
+                clearInterval(pollTimer);
+                document.getElementById('gamePanel').style.display = 'none';
+                document.getElementById('endPanel').style.display = 'block';
+                document.getElementById('finalScore').innerText = data.final_score || 0;
+            }
+            if (data.triggers && data.triggers.length) {
+                document.getElementById('reactionsArea').style.display = 'block';
+                let html = '';
+                data.triggers.forEach((r,idx) => { html += `<button onclick="useReaction(${idx})" class="bg-yellow-600 text-white px-2 py-1 rounded text-sm">${r.name}</button>`; });
+                document.getElementById('reactionList').innerHTML = html;
+            } else {
+                document.getElementById('reactionsArea').style.display = 'none';
+            }
+            if (data.investors && data.investors.length) {
+                document.getElementById('investorList').innerHTML = data.investors.map(i => `${i.type}: ${i.amount.toLocaleString()}`).join(', ');
+            } else {
+                document.getElementById('investorList').innerHTML = 'None';
+            }
         }
     }
-    async function resetGame() {
-        if (confirm('Reset entire game? All data lost.')) {
-            await fetch(`${API_BASE}/rooms/${currentRoomId}/reset`, {method: 'POST'});
-            fetchRoom();
+
+    function updateGameUI(state) {
+        gameState = state;
+        document.getElementById('funding').innerText = (state.funding_progress*100).toFixed(1);
+        document.getElementById('energy').innerText = state.energy_left;
+        document.getElementById('hypeVal').innerText = state.hype;
+        document.getElementById('hypeBar').style.width = state.hype+'%';
+        document.getElementById('transVal').innerText = state.transparency;
+        document.getElementById('transBar').style.width = state.transparency+'%';
+        document.getElementById('intrinsic').innerText = state.metrics.intrinsic?.toFixed(1)||0;
+        document.getElementById('valuation').innerText = state.metrics.valuation_sanity?.toFixed(1)||0;
+        document.getElementById('roi').innerText = state.metrics.roi_norm?.toFixed(1)||0;
+        document.getElementById('runway').innerText = state.metrics.runway||0;
+        if (state.last_scenario) document.getElementById('scenario').innerHTML = `📢 ${state.last_scenario}`;
+        const handContainer = document.getElementById('hand');
+        if (state.hand && state.hand.length) {
+            let html = '';
+            state.hand.forEach((card, idx) => {
+                let borderColor = card.type==='hotpink'?'#f97316':(card.type==='babyblue'?'#3b82f6':'#8b5cf6');
+                let selectedClass = (selectedCardIdx===idx)?'selected':'';
+                html += `<div class="hand-card ${selectedClass}" style="border-left:4px solid ${borderColor};" onclick="selectCard(${idx})">
+                            <b>${card.name}</b> (${card.cost})<br><small>${card.desc.substring(0,40)}</small>
+                        </div>`;
+            });
+            handContainer.innerHTML = html;
+        } else {
+            handContainer.innerHTML = '<div>No cards</div>';
         }
     }
-    function copy(text) { navigator.clipboard.writeText(text); alert('Copied!'); }
+
+    function selectCard(idx) { selectedCardIdx = idx; updateGameUI(gameState); }
+    async function playCard() {
+        if (selectedCardIdx===null) { alert('Select a card'); return; }
+        const res = await fetch(`${API}/play_card`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({room_id:roomId, player_index:playerIndex, card_index:selectedCardIdx})
+        });
+        if (res.ok) { selectedCardIdx=null; fetchPlayerState(); }
+        else alert('Cannot play card');
+    }
+    async function mulligan() {
+        const res = await fetch(`${API}/mulligan`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({room_id:roomId, player_index:playerIndex})
+        });
+        if (res.ok) fetchPlayerState();
+        else alert('Mulligan failed');
+    }
+    async function readyPhase() {
+        await fetch(`${API}/player_ready_phase`, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({room_id:roomId, player_index:playerIndex})
+        });
+        alert('Ready for next phase!');
+    }
+    async function useReaction(idx) { alert('Reaction not fully implemented'); }
 
     function startPolling() {
-        if (pollInterval) clearInterval(pollInterval);
-        fetchRoom();
-        pollInterval = setInterval(fetchRoom, 2500);
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(fetchPlayerState, 2000);
+    }
+    function startGamePolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = setInterval(fetchPlayerState, 3000);
     }
 
-    // Auto-load room if exists
-    const saved = sessionStorage.getItem('roomId');
-    if (saved) {
-        currentRoomId = saved;
-        document.getElementById('setupPanel').style.display = 'none';
-        document.getElementById('gamePanel').style.display = 'block';
-        startPolling();
-    }
-
-    window.createRoom = createRoom;
-    window.createNewRoom = createNewRoom;
-    window.startDeckPhase = startDeckPhase;
-    window.nextPhase = nextPhase;
-    window.addRandomEvent = addRandomEvent;
-    window.resetCurrentPhase = resetCurrentPhase;
-    window.endGame = endGame;
-    window.resetGame = resetGame;
-    window.copy = copy;
+    startPolling();
 </script>
 </body>
 </html>
