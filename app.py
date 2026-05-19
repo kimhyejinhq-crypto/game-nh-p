@@ -9,39 +9,34 @@
 # ===================================================================
 
 from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
 import random
 import math
 import uuid
+import os
 
 app = Flask(__name__, template_folder='templates')
-CORS(app)  # Thêm CORS để frontend có thể gọi API
 app.secret_key = 'startup-game-secret'
 
 # ===================== MINH: DỮ LIỆU CỐ ĐỊNH =====================
 SCENARIOS = [
-    # Market (6)
     {"id":1,"name":"Market Liquidity Improves","cat":"Market","delta":{"price":0.03,"cogs":0,"hype":10,"sentiment":8,"transparency":0,"reg_risk":0}},
     {"id":2,"name":"Investor Risk Appetite Rises","cat":"Market","delta":{"price":0.08,"cogs":-0.02,"hype":22,"sentiment":15,"transparency":0,"reg_risk":0}},
     {"id":3,"name":"Capital Moves to Safer Assets","cat":"Market","delta":{"price":-0.05,"cogs":0.02,"hype":-12,"sentiment":-8,"transparency":0,"reg_risk":0}},
     {"id":4,"name":"Interest Rates Increase","cat":"Market","delta":{"price":-0.08,"cogs":0.04,"hype":-18,"sentiment":-15,"transparency":-3,"reg_risk":3}},
     {"id":5,"name":"Startup Funding Market Slows Down","cat":"Market","delta":{"price":-0.15,"cogs":0.05,"hype":-30,"sentiment":-25,"transparency":-8,"reg_risk":8}},
     {"id":6,"name":"Capital Market Liquidity Crisis","cat":"Market","delta":{"price":-0.25,"cogs":0.1,"hype":-40,"sentiment":-35,"transparency":-15,"reg_risk":15}},
-    # Internal (6)
     {"id":7,"name":"Operating Costs Exceed the Budget","cat":"Internal","delta":{"cogs":0.05,"hype":-5,"transparency":-5,"trust_all":-5,"runway":-1}},
     {"id":8,"name":"Product Quality Issues Appear","cat":"Internal","delta":{"cogs":0.1,"hype":-10,"transparency":-10,"trust_all":-10,"runway":-2}},
     {"id":9,"name":"Data leak","cat":"Internal","delta":{"cogs":0,"hype":-15,"transparency":-20,"trust_all":-15,"runway":0}},
     {"id":10,"name":"Key Team Member Leaves","cat":"Internal","delta":{"cogs":0.03,"hype":-10,"transparency":-5,"trust_all":-5,"runway":0}},
     {"id":11,"name":"Important Business Milestone Achieved","cat":"Internal","delta":{"cogs":-0.05,"hype":15,"transparency":10,"trust_all":10,"runway":0}},
     {"id":12,"name":"Internal Control Improves","cat":"Internal","delta":{"cogs":0,"hype":5,"transparency":15,"trust_all":10,"runway":0}},
-    # External (6)
     {"id":13,"name":"Competitor Cuts Prices","cat":"External","delta":{"price":-0.05,"marketing_eff":-0.1,"hype":-5,"transparency":0}},
     {"id":14,"name":"Competitor Launches a Better Product","cat":"External","delta":{"price":-0.1,"marketing_eff":-0.2,"hype":-15,"transparency":-5}},
     {"id":15,"name":"Strategic Partnership Announced","cat":"External","delta":{"price":0.05,"marketing_eff":0.15,"hype":15,"transparency":5}},
     {"id":16,"name":"Intellectual Property Dispute","cat":"External","delta":{"price":-0.08,"marketing_eff":-0.15,"hype":-20,"transparency":-10}},
     {"id":17,"name":"Industry Recognition Received","cat":"External","delta":{"price":0.1,"marketing_eff":0.1,"hype":10,"transparency":5}},
     {"id":18,"name":"Rumor of Interest from a Major Investor","cat":"External","delta":{"price":0.15,"marketing_eff":0.05,"hype":25,"transparency":-5}},
-    # Regulatory (6)
     {"id":19,"name":"Regulator Requests Additional Documents","cat":"Regulatory","delta":{"reg_risk":25,"transparency":-10,"trust_all":-10,"legal_cost_percent":5}},
     {"id":20,"name":"The company is approved for regulatory Sandbox testing","cat":"Regulatory","delta":{"reg_risk":-30,"transparency":15,"trust_all":15,"legal_cost_percent":-3}},
     {"id":21,"name":"New Policy Supports Financial Innovation","cat":"Regulatory","delta":{"reg_risk":-15,"transparency":5,"trust_all":5,"legal_cost_percent":0}},
@@ -51,7 +46,6 @@ SCENARIOS = [
 ]
 
 # ===================== MINH: CARD ENGINE – ACTIVE CARDS =====================
-# Đã loại bỏ tokenomic effects
 ACTIVE_CARDS_FULL = [
     {"id":"A1","name":"Marketing Blitz","cost":2,"type":"red","desc":"Run a large campaign to quickly attract attention.","effect":{"hype":25,"transparency":-5,"cost_percent":3}},
     {"id":"A2","name":"Social Media Campaign","cost":3,"type":"red","desc":"Use social media to create strong public interest.","effect":{"hype":40,"transparency":-10,"cost_percent":5}},
@@ -114,10 +108,8 @@ REACTION_CARDS = [
 def get_condition_value(project, metric):
     if metric == "runway":
         return calculate_metrics(project)["runway"]
-
     if metric == "min_bot_trust":
         return min(project.get("trust_scores", {0: 50}).values())
-
     if metric == "whale_trust":
         whale_scores = [
             project["trust_scores"].get(bot["id"], 50)
@@ -125,26 +117,19 @@ def get_condition_value(project, metric):
             if bot["type"] == "Whale"
         ]
         return sum(whale_scores) / len(whale_scores) if whale_scores else 50
-
     return project.get(metric)
-
 
 def check_condition(project, condition):
     if not condition:
         return True
-
     if "event" in condition:
         return condition["event"] in project.get("active_events", [])
-
     metric = condition.get("metric")
     operator = condition.get("operator")
     target = condition.get("value")
-
     current_value = get_condition_value(project, metric)
-
     if current_value is None:
         return False
-
     if operator == "<":
         return current_value < target
     if operator == ">":
@@ -155,17 +140,13 @@ def check_condition(project, condition):
         return current_value >= target
     if operator == "==":
         return current_value == target
-
     return False
-
 
 def get_available_reactions(project):
     available = []
-
     for card in project.get("reaction_hand", []):
         if check_condition(project, card.get("condition")):
             available.append(card)
-
     return available
 
 # ==================== PHUC - CALCULATION ====================
@@ -182,7 +163,6 @@ def calculate_metrics(proj):
     burn_rate = monthly_burn / proj["target_funding"] if proj["target_funding"] > 0 else 0
     growth = (proj["units_m6"] / proj["units_m1"]) - 1 if proj["units_m1"] > 0 else 0
 
-    # Enhanced intrinsic components
     if gm > 0.2:
         gm_score = 20 + 10 * (1 - math.exp(-5 * (gm - 0.2) / 0.6))
     else:
@@ -415,7 +395,7 @@ def process_phase(room, phase, players, logs):
                     players[idx]['available_cash'] -= invested
                     alloc_entry['idle'] += invested
                     alloc_entry['perProject'][idx] = 0
-                    logs.append(f"🐋 Bot {bot['type']} rút toàn bộ {invested:.0f} từ dự án {idx+1} (kết thúc)")
+                    logs.append(f"Bot {bot['type']} rút toàn bộ {invested:.0f} từ dự án {idx+1} (kết thúc)")
                 continue
             diff = A.get((bot['id'], best_idx), -1e9) - A.get((bot['id'], idx), -1e9)
             if diff > 15:
@@ -433,11 +413,11 @@ def process_phase(room, phase, players, logs):
                     players[idx]['available_cash'] -= actual
                     alloc_entry['perProject'][idx] -= actual
                     alloc_entry['idle'] += actual
-                    logs.append(f"🐋 Bot {bot['type']} rút {actual:.0f} từ dự án {idx+1}")
+                    logs.append(f"Bot {bot['type']} rút {actual:.0f} từ dự án {idx+1}")
                 else:
                     players[idx]['status'] = 'bankrupt'
                     players[idx]['funding_progress'] = 0
-                    logs.append(f"💀 Dự án {idx+1} PHÁ SẢN!")
+                    logs.append(f"Dự án {idx+1} PHÁ SẢN!")
 
     for bot in active_bots:
         alloc_entry = next(entry for entry in bot_alloc if entry['bot_id'] == bot['id'])
@@ -467,7 +447,7 @@ def process_phase(room, phase, players, logs):
                     players[idx]['funding_progress'] = min(1.0, players[idx]['total_invested'] / players[idx]['target_funding'])
                     alloc_entry['perProject'][idx] += cap
                     remaining -= cap
-                    logs.append(f"💸 Bot {bot['type']} đầu tư {cap:.0f} vào dự án {idx+1}")
+                    logs.append(f"Bot {bot['type']} đầu tư {cap:.0f} vào dự án {idx+1}")
         alloc_entry['idle'] = remaining
 
 # ==================== KHANH: FLASK APP & ROOMS ====================
@@ -1068,16 +1048,13 @@ def card_lists():
         return jsonify({'error': 'Không thể tải danh sách thẻ', 'details': str(e)}), 500
 
 # ==================== DƯƠNG: BỔ SUNG API CHO HOST FRONTEND ====================
-# Các route này được thêm vào để host.html có thể giao tiếp với backend
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Kiểm tra trạng thái backend"""
     return jsonify({'status': 'ok', 'message': 'Backend đang chạy'})
 
 @app.route('/api/rooms', methods=['POST'])
 def api_create_room():
-    """Tạo phòng mới - version cho host.html gọi"""
     data = request.json
     room_name = data.get('name', 'Startup Game')
     max_players = data.get('maxPlayers', 4)
@@ -1123,13 +1100,11 @@ def api_create_room():
 
 @app.route('/api/rooms/<room_id>', methods=['GET'])
 def api_get_room(room_id):
-    """Lấy thông tin phòng cho host.html"""
     if room_id not in rooms:
         return jsonify({'error': 'Room not found'}), 404
     
     room = rooms[room_id]
     
-    # Tạo danh sách players cho frontend
     players_list = []
     for i, proj in enumerate(room.get('players', [])):
         if proj:
@@ -1157,7 +1132,6 @@ def api_get_room(room_id):
                 'max_phase': 5
             })
     
-    # Tạo join links
     base_url = request.host_url.rstrip('/')
     join_links = []
     for i in range(room.get('num_players', 4)):
@@ -1167,7 +1141,6 @@ def api_get_room(room_id):
             'realLink': f"{base_url}/play/{room_id}/{i}"
         })
     
-    # Tạo joined players count
     joined_players = len([p for p in room.get('players', []) if p is not None])
     
     return jsonify({
@@ -1186,13 +1159,11 @@ def api_get_room(room_id):
 
 @app.route('/api/rooms/<room_id>/next-phase', methods=['POST'])
 def api_next_phase(room_id):
-    """Chuyển sang phase tiếp theo"""
     if room_id not in rooms:
         return jsonify({'error': 'Room not found'}), 404
     
     room = rooms[room_id]
     
-    # Lưu phase details trước khi chuyển (nếu có người chơi)
     if room.get('players') and any(p for p in room['players'] if p):
         phase_details = {
             'phase': room.get('phase', 0),
@@ -1214,17 +1185,13 @@ def api_next_phase(room_id):
             room['phase_details'] = []
         room['phase_details'].append(phase_details)
     
-    # Tăng phase
     room['phase'] = room.get('phase', 0) + 1
-    
-    # Reset ready states cho phase mới
     room['player_ready'] = [False] * room.get('num_players', 4)
     
     return jsonify({'success': True, 'phase': room.get('phase', 0)})
 
 @app.route('/api/rooms/<room_id>/random-event', methods=['POST'])
 def api_random_event(room_id):
-    """Thêm sự kiện ngẫu nhiên"""
     if room_id not in rooms:
         return jsonify({'error': 'Room not found'}), 404
     
@@ -1235,7 +1202,6 @@ def api_random_event(room_id):
         room['logs'] = []
     room['logs'].append(f"🎲 Sự kiện ngẫu nhiên: {scenario['name']}")
     
-    # Áp dụng sự kiện cho tất cả người chơi active
     for proj in room.get('players', []):
         if proj and proj.get('status') == 'active':
             d = scenario['delta']
@@ -1248,24 +1214,20 @@ def api_random_event(room_id):
 
 @app.route('/api/rooms/<room_id>/reset-phase', methods=['POST'])
 def api_reset_phase(room_id):
-    """Reset phase hiện tại"""
     if room_id not in rooms:
         return jsonify({'error': 'Room not found'}), 404
     
     room = rooms[room_id]
     
-    # Reset phase về 0 (hoặc giảm đi 1)
     if room.get('phase', 0) > 0:
         room['phase'] = max(0, room['phase'] - 1)
     
-    # Reset logs
     room['logs'] = room.get('logs', []) + [f"🔄 Phase đã được reset về {room['phase']}"]
     
     return jsonify({'success': True, 'phase': room.get('phase', 0)})
 
 @app.route('/api/rooms/<room_id>/end', methods=['POST'])
 def api_end_game(room_id):
-    """Kết thúc game"""
     if room_id not in rooms:
         return jsonify({'error': 'Room not found'}), 404
     
@@ -1278,13 +1240,11 @@ def api_end_game(room_id):
 
 @app.route('/api/rooms/<room_id>/reset', methods=['POST'])
 def api_reset_game(room_id):
-    """Reset toàn bộ game"""
     if room_id not in rooms:
         return jsonify({'error': 'Room not found'}), 404
     
     room = rooms[room_id]
     
-    # Reset các giá trị
     room['phase'] = 0
     room['game_ended'] = False
     room['status'] = 'waiting_for_projects'
@@ -1298,18 +1258,11 @@ def api_reset_game(room_id):
     room['logs'] = ["🔄 Game đã được reset. Chờ người chơi submit dự án..."]
     room['phase_details'] = []
     
-    # Reset bot memory
     for bot_id in room['bot_memory']:
         room['bot_memory'][bot_id]['attractiveness_history'] = [[] for _ in range(room.get('num_players', 4))]
     
     return jsonify({'success': True})
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
-    
-    print(f"🚀 Server đang chạy tại http://0.0.0.0:{port}")
-    print(f"📌 Mode: Production")
-    print(f"📌 Các API đã sẵn sàng: /api/rooms, /api/health, /api/rooms/<id>/next-phase, ...")
-    
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
