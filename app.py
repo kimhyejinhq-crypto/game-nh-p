@@ -1,13 +1,6 @@
 # ===================================================================
-# STARTUP GAME - TOÀN BỘ CODE GỘP TRONG MỘT FILE
-# PHÂN CÔNG:
-# - MINH: Dữ liệu cố định, Card Engine, Utils
-# - PHÚC: Metrics, Game Controller (process_phase, reset_for_next_phase)
-# - JIN: Attractiveness, Bot AI, Reaction Manager
-# - KHANH: API Routing, Flask app, Rooms management
-# - DƯƠNG: templates/host.html, templates/play.html (riêng)
+# STARTUP GAME - TOÀN BỘ CODE GỘP TRONG MỘT FILE (ĐÃ SỬA LỖI JOIN LINKS)
 # ===================================================================
-
 
 from flask import Flask, render_template, request, jsonify
 import random
@@ -220,16 +213,16 @@ for i in range(1, 201):
     "medium": random.randint(5000, 20000),
     "large": random.randint(20000, 80000)
 }[wealth_class]
-hype_sens = round(random.uniform(0.2, 1.0), 2) if bot_type != "FOMO" else round(random.uniform(0.8, 1.5), 2)
-trans_sens = round(random.uniform(0.8, 2.0), 2)
-if bot_type == "FOMO":
-    decay = round(random.uniform(0.02, 0.08), 2)
-elif bot_type == "Value Hunter":
-    decay = round(random.uniform(0.1, 0.2), 2)
-elif bot_type == "Whale":
-    decay = round(random.uniform(0.2, 0.4), 2)
-else:
-    decay = round(random.uniform(0.1, 0.3), 2)
+    hype_sens = round(random.uniform(0.2, 1.0), 2) if bot_type != "FOMO" else round(random.uniform(0.8, 1.5), 2)
+    trans_sens = round(random.uniform(0.8, 2.0), 2)
+    if bot_type == "FOMO":
+        decay = round(random.uniform(0.02, 0.08), 2)
+    elif bot_type == "Value Hunter":
+        decay = round(random.uniform(0.1, 0.2), 2)
+    elif bot_type == "Whale":
+        decay = round(random.uniform(0.2, 0.4), 2)
+    else:
+        decay = round(random.uniform(0.1, 0.3), 2)
 
     if bot_type == "FOMO":
         weights = {
@@ -1225,6 +1218,37 @@ def api_get_room(room_id):
     
     room = rooms[room_id]
     
+    # ====== PHẦN ĐÃ SỬA LỖI: TẠO JOIN LINKS AN TOÀN ======
+    join_links = []
+    try:
+        base_url = request.host_url.rstrip('/')
+        num_players = room.get('num_players', 4)
+        # Đảm bảo num_players là int
+        if not isinstance(num_players, int):
+            num_players = int(num_players) if str(num_players).isdigit() else 4
+        for i in range(num_players):
+            join_links.append({
+                'playerIndex': i,
+                'playerName': f'Player {i+1}',
+                'realLink': f"{base_url}/play/{room_id}/{i}"
+            })
+    except Exception as e:
+        print(f"[ERROR] Không thể tạo joinLinks cho room {room_id}: {e}")
+        # Fallback: tạo link dựa trên độ dài mảng players (nếu có)
+        try:
+            num_players_fallback = len(room.get('players', []))
+            if num_players_fallback == 0:
+                num_players_fallback = 4
+            for i in range(num_players_fallback):
+                join_links.append({
+                    'playerIndex': i,
+                    'playerName': f'Player {i+1}',
+                    'realLink': f"{request.host_url.rstrip('/')}/play/{room_id}/{i}"
+                })
+        except:
+            join_links = []
+    # ================================================
+    
     players_list = []
     for i, proj in enumerate(room.get('players', [])):
         if proj:
@@ -1254,21 +1278,10 @@ def api_get_room(room_id):
                 'deck_ready': False
             })
     
-    base_url = request.host_url.rstrip('/')
-    join_links = []
-    for i in range(room.get('num_players', 4)):
-        join_links.append({
-            'playerIndex': i,
-            'playerName': f'Player {i+1}',
-            'realLink': f"{base_url}/play/{room_id}/{i}"
-        })
-    
-    joined_players = len([p for p in room.get('players', []) if p is not None])
-    
     return jsonify({
         'name': room.get('name', 'Game Room'),
         'maxPlayers': room.get('num_players', 4),
-        'joinedPlayers': joined_players,
+        'joinedPlayers': len([p for p in room.get('players', []) if p is not None]),
         'currentPhase': room.get('phase', 0),
         'maxPhase': room.get('max_phase', 7),
         'ended': room.get('game_ended', False),
@@ -1390,5 +1403,3 @@ def api_reset_game(room_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-
-
