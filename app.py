@@ -216,21 +216,21 @@ for i in range(1, 201):
     bot_type = random.choices(["FOMO", "Value Hunter", "Whale", "Random"], weights=[50, 30, 10, 10])[0]
     wealth_class = random.choices(["small", "medium", "large"], weights=[40, 40, 20])[0]
     wealth = {
-        "small": random.randint(1000, 5000),
-        "medium": random.randint(10000, 50000),
-        "large": random.randint(50000, 200000)
+        "small": random.randint(500, 2000),
+        "medium": random.randint(5000, 20000),
+        "large": random.randint(20000, 80000)
     }[wealth_class]
-    hype_sens = round(random.uniform(0.5, 2.5), 2)
-    trans_sens = round(random.uniform(0.5, 1.2), 2)
+    hype_sens = round(random.uniform(0.2, 1.0), 2) if bot_type != "FOMO" else round(random.uniform(0.8, 1.5), 2)
+    trans_sens = round(random.uniform(0.8, 2.0), 2)
 
     if bot_type == "FOMO":
-        decay = round(random.uniform(0.05, 0.15), 2)
+        decay = round(random.uniform(0.02, 0.08), 2)
     elif bot_type == "Value Hunter":
-        decay = round(random.uniform(0.2, 0.35), 2)
+        decay = round(random.uniform(0.1, 0.2), 2)
     elif bot_type == "Whale":
-        decay = round(random.uniform(0.4, 0.6), 2)
+        decay = round(random.uniform(0.2, 0.4), 2)
     else:
-        decay = round(random.uniform(0.15, 0.4), 2)
+        decay = round(random.uniform(0.1, 0.3), 2)
 
     if bot_type == "FOMO":
         weights = {
