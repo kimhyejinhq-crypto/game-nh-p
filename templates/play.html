@@ -380,37 +380,108 @@
         let autoDeckCount = 0;
         let selectedActiveIndices = new Set();
         let selectedReactionIndices = new Set();
+        let deckSubmittedFlag = false; // để tránh submit nhiều lần
 
-        // Kiểm tra kết nối room
-        if (!currentRoomId || currentRoomId === 'null' || currentRoomId === 'undefined') {
-            const statusDiv = document.getElementById('connectionStatus');
-            statusDiv.className = 'connection-error mb-4';
-            statusDiv.innerHTML = '❌ INVALID ROOM! Please use the join link provided by the host.<br><small>Example: /play/ROOM_ID/0</small>';
-            statusDiv.classList.remove('hidden');
-            document.getElementById('projectFormPanel').style.opacity = '0.5';
-            document.getElementById('projectFormPanel').style.pointerEvents = 'none';
-        } else {
-            fetch(`${API_BASE_URL}/rooms/${currentRoomId}`)
-                .then(res => {
-                    if (res.ok) {
-                        const statusDiv = document.getElementById('connectionStatus');
-                        statusDiv.className = 'connection-success mb-4';
-                        statusDiv.innerHTML = '✅ Connected to game room! Ready to submit your project.';
-                        statusDiv.classList.remove('hidden');
-                        setTimeout(() => statusDiv.classList.add('hidden'), 3000);
-                    } else {
-                        throw new Error('Room not found');
+        // ==================== KIỂM TRA TRẠNG THÁI BAN ĐẦU ====================
+        async function loadInitialState() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/player_state?room_id=${currentRoomId}&player_index=${playerIndexFromUrl}`);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showConnectionError("Room not found. Please check your join link.");
                     }
-                })
-                .catch(err => {
-                    const statusDiv = document.getElementById('connectionStatus');
-                    statusDiv.className = 'connection-error mb-4';
-                    statusDiv.innerHTML = `⚠️ Cannot connect to room "${currentRoomId}". Make sure backend is running.`;
-                    statusDiv.classList.remove('hidden');
-                });
+                    return;
+                }
+                const data = await response.json();
+                
+                // Kiểm tra nếu game đã kết thúc
+                if (data.game_ended || data.ended) {
+                    document.getElementById('finalScore').innerText = data.final_score?.toFixed(1) || '0';
+                    document.getElementById('finalFunding').innerText = ((data.metrics?.funding_progress || 0) * 100).toFixed(1);
+                    document.getElementById('endgamePanel').classList.remove('hidden');
+                    document.getElementById('projectFormPanel').classList.add('hidden');
+                    document.getElementById('deckPanel').classList.add('hidden');
+                    document.getElementById('gamePanel').classList.add('hidden');
+                    return;
+                }
+                
+                // Nếu game đã bắt đầu (playing)
+                if (data.game_started) {
+                    gameStarted = true;
+                    document.getElementById('projectFormPanel').classList.add('hidden');
+                    document.getElementById('deckPanel').classList.add('hidden');
+                    document.getElementById('gamePanel').classList.remove('hidden');
+                    startGamePolling(); // polling để cập nhật game state
+                    return;
+                }
+                
+                // Nếu đang ở giai đoạn chọn deck
+                if (data.choosing_deck === true) {
+                    // Kiểm tra xem player đã submit deck chưa
+                    if (data.deck_ready === true) {
+                        // Đã submit deck rồi, chờ game start
+                        document.getElementById('projectFormPanel').classList.add('hidden');
+                        document.getElementById('deckPanel').classList.add('hidden');
+                        showWaitingMessage("✅ Deck đã được gửi! Đang chờ host bắt đầu game...");
+                    } else {
+                        // Chưa submit deck, hiển thị deck builder
+                        // Nhưng cần kiểm tra xem player đã submit project chưa? Nếu chưa thì phải submit project trước.
+                        // Tuy nhiên, để vào được choosing_deck thì player đã phải submit project rồi (vì chỉ sau submit mới có player trong room)
+                        // Nhưng để an toàn, nếu chưa có project (data có thể báo lỗi) thì vẫn hiện form.
+                        const hasProject = data.hype !== undefined; // nếu có hype tức là đã có project
+                        if (hasProject) {
+                            document.getElementById('projectFormPanel').classList.add('hidden');
+                            showDeckBuilder();
+                        } else {
+                            // Chưa submit project, hiện form
+                            document.getElementById('projectFormPanel').classList.remove('hidden');
+                        }
+                    }
+                    return;
+                }
+                
+                // Nếu đang ở waiting_for_projects hoặc trạng thái khác
+                // Kiểm tra xem player đã submit project chưa (dựa vào việc có dữ liệu project trong state không)
+                // Cách đơn giản: gọi thêm API /api/rooms để biết player đã join chưa? Hoặc dựa vào response hiện tại.
+                // Trong player_state, nếu player chưa submit thì hype sẽ là undefined? Thực tế API trả về 404 nếu chưa submit? Không, API player_state trả về 404 nếu player không tồn tại trong room.
+                // Vì vậy nếu vào được đây tức là player đã tồn tại (đã submit project) nhưng game chưa chuyển sang choosing_deck.
+                // Lúc này ta cần hiển thị thông báo chờ host bắt đầu chọn deck.
+                // Nhưng thực tế, nếu room đang ở waiting_for_projects và player đã submit, thì người chơi cần chờ host force start deck phase hoặc chờ thêm người chơi khác.
+                // Ta sẽ hiển thị thông báo chờ.
+                if (data.hype !== undefined) {
+                    // Đã submit project
+                    document.getElementById('projectFormPanel').classList.add('hidden');
+                    showWaitingMessage("📝 Dự án đã được gửi. Đang chờ host hoặc đủ người chơi để bắt đầu chọn Deck...");
+                } else {
+                    // Chưa submit project
+                    document.getElementById('projectFormPanel').classList.remove('hidden');
+                }
+                
+            } catch (error) {
+                console.error("Load initial state error:", error);
+                showConnectionError("Cannot load game state. Please refresh.");
+            }
         }
         
-        // Target funding constraints
+        function showWaitingMessage(msg) {
+            const deckPanel = document.getElementById('deckPanel');
+            deckPanel.innerHTML = `
+                <div class="text-center p-8">
+                    <div class="loading-spinner mb-4"></div>
+                    <p class="text-purple-800">${msg}</p>
+                </div>
+            `;
+            deckPanel.classList.remove('hidden');
+        }
+        
+        function showConnectionError(msg) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.innerHTML = msg;
+            statusDiv.className = 'connection-error mb-4';
+            statusDiv.classList.remove('hidden');
+        }
+        
+        // ===== TARGET FUNDING CONSTRAINTS =====
         const targetFundingConstraints = {
             S: { min: 30000, max: 99999 },
             M: { min: 100000, max: 251999 },
@@ -479,30 +550,7 @@
 
         let fullActivePool = [...ACTIVE_CARDS_FULL];
         
-        // ===== PLAYER STATE =====
-        let myPlayer = {
-            roomId: currentRoomId,
-            playerIndex: playerIndexFromUrl,
-            scale: 'M',
-            maxPhase: 7,
-            targetFunding: 150000,
-            price: 35,
-            transparency: 50,
-            hype: 50,
-            fundingProgress: 0,
-            availableCash: 80000,
-            energyLeft: 3,
-            currentPhase: 1,
-            currentHand: [],
-            activeDeck: [],
-            reactionHand: [],
-            lastScenario: 'No events yet',
-            metrics: { intrinsic: 0, valuation_sanity: 0, roi_norm: 0, runway: 0 },
-            investors: [],
-            deckSubmitted: false
-        };
-        
-        // ===== INFO DATABASE =====
+        // ===== INFO MODAL =====
         const infoDatabase = {
             scale: { title: "Project Scale", fields: [{ name: "Scale", meaning: "Choose project size: Small (5 phases), Medium (7 phases), Large (9 phases).", unit: "—", constraints: "S / M / L" }, { name: "Target Funding", meaning: "Amount to raise from investors.", unit: "USD", constraints: "Small: 30k–99,999 | Medium: 100k–251,999 | Large: 252k–500k" }] },
             price_channels: { title: "Price & Sales Channels", fields: [{ name: "Retail price", meaning: "Listed price before fees.", unit: "USD", constraints: "10 – 1000" }, { name: "E-commerce fee", meaning: "Platform fee.", unit: "%", constraints: "0–100" }, { name: "Retail fee", meaning: "Margin for physical retail.", unit: "%", constraints: "0–100" }, { name: "Direct channel fee", meaning: "Own website cost.", unit: "%", constraints: "0–100" }] },
@@ -512,7 +560,6 @@
             capital: { title: "Capital Structure", fields: [{ name: "Owner equity", meaning: "Founders' cash.", unit: "USD", constraints: "0 - 300,000" }, { name: "Bank loan", meaning: "Debt amount.", unit: "USD", constraints: "0 - 300,000" }, { name: "Loan interest rate", meaning: "Annual rate.", unit: "%/year", constraints: "5 – 100" }, { name: "Equity offered", meaning: "Equity sold to investors.", unit: "%", constraints: "0.1–99.9" }] }
         };
         
-        // ===== MODAL =====
         const modal = document.getElementById('infoModal');
         function showModal(categoryKey) {
             const data = infoDatabase[categoryKey];
@@ -602,9 +649,10 @@
                 
                 const result = await response.json();
                 projectSubmitted = true;
-                alert(`✅ Project submitted successfully! Target funding: $${targetFunding.toLocaleString()}. Now build your deck.`);
+                alert(`✅ Project submitted successfully! Target funding: $${targetFunding.toLocaleString()}. Now building your deck...`);
                 document.getElementById('projectFormPanel').classList.add('hidden');
-                showDeckBuilder();
+                // Sau khi submit, tải lại trạng thái để hiển thị deck builder nếu phòng đã ở chế độ chọn deck
+                loadInitialState(); // gọi lại để cập nhật UI
             } catch (error) {
                 console.error('Submit error:', error);
                 alert(`❌ Error: ${error.message}\n\nMake sure backend is running at ${API_BASE_URL}`);
@@ -725,6 +773,8 @@
                     alert('You must select exactly 22 Action cards!');
                     return;
                 }
+                if (deckSubmittedFlag) return;
+                deckSubmittedFlag = true;
                 
                 const submitBtn = document.getElementById('submitDeckBtn');
                 const originalText = submitBtn.innerText;
@@ -745,11 +795,12 @@
                     if (!response.ok) throw new Error('Submit deck failed');
                     alert(`✅ Deck submitted! Waiting for host to start the game.`);
                     document.getElementById('deckPanel').classList.add('hidden');
-                    startGamePolling();
+                    startGamePolling(); // bắt đầu polling chờ game start
                 } catch (error) {
                     alert(`❌ Error: ${error.message}`);
                     submitBtn.innerText = originalText;
                     submitBtn.disabled = false;
+                    deckSubmittedFlag = false;
                 }
             };
         }
@@ -780,6 +831,8 @@
                             gameStarted = true;
                             statusDiv.classList.add('hidden');
                             document.getElementById('gamePanel').classList.remove('hidden');
+                            document.getElementById('deckPanel').classList.add('hidden');
+                            document.getElementById('projectFormPanel').classList.add('hidden');
                         }
                         updateGameFromBE(data);
                         if (data.game_ended || data.ended) {
@@ -788,6 +841,12 @@
                             document.getElementById('endgamePanel').classList.remove('hidden');
                             document.getElementById('gamePanel').classList.add('hidden');
                             if (pollingInterval) clearInterval(pollingInterval);
+                        }
+                    } else if (data.choosing_deck === true && !gameStarted) {
+                        // Nếu đang ở choosing_deck và game chưa start, nhưng player chưa ready deck, hiện deck builder
+                        if (!data.deck_ready && document.getElementById('deckPanel').classList.contains('hidden')) {
+                            document.getElementById('projectFormPanel').classList.add('hidden');
+                            showDeckBuilder();
                         }
                     }
                 } catch (e) { 
@@ -885,6 +944,9 @@
                 alert(`❌ ${error.message}`); 
             }
         };
+        
+        // ===== KHỞI CHẠY =====
+        loadInitialState();
     </script>
 </body>
 </html>
