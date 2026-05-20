@@ -216,9 +216,9 @@ for i in range(1, 201):
     bot_type = random.choices(["FOMO", "Value Hunter", "Whale", "Random"], weights=[50, 30, 10, 10])[0]
     wealth_class = random.choices(["small", "medium", "large"], weights=[40, 40, 20])[0]
     wealth = {
-        "small": random.randint(500, 2000),
-        "medium": random.randint(5000, 20000),
-        "large": random.randint(20000, 80000)
+        "small": random.randint(50, 200),
+        "medium": random.randint(500, 2000),
+        "large": random.randint(2000, 8000)
     }[wealth_class]
     hype_sens = round(random.uniform(0.2, 1.0), 2) if bot_type != "FOMO" else round(random.uniform(0.8, 1.5), 2)
     trans_sens = round(random.uniform(0.8, 2.0), 2)
