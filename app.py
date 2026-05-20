@@ -1,6 +1,13 @@
 # ===================================================================
-# STARTUP GAME - TOÀN BỘ CODE GỘP TRONG MỘT FILE (ĐÃ SỬA LỖI SUBMIT DECK)
+# STARTUP GAME - TOÀN BỘ CODE GỘP TRONG MỘT FILE
+# PHÂN CÔNG:
+# - MINH: Dữ liệu cố định, Card Engine, Utils
+# - PHÚC: Metrics, Game Controller (process_phase, reset_for_next_phase)
+# - JIN: Attractiveness, Bot AI, Reaction Manager
+# - KHANH: API Routing, Flask app, Rooms management
+# - DƯƠNG: templates/host.html, templates/play.html (riêng)
 # ===================================================================
+
 
 from flask import Flask, render_template, request, jsonify
 import random
