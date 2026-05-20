@@ -113,7 +113,6 @@
 </head>
 <body class="p-5 font-sans antialiased">
     <div class="max-w-5xl mx-auto">
-        <!-- Connection status -->
         <div id="connectionStatus" class="connection-status mb-4 p-3 rounded-xl text-center text-sm hidden"></div>
 
         <!-- Project submission form -->
@@ -349,15 +348,30 @@
         async function loadCards() {
             try {
                 const res = await fetch(`${API_BASE}/card_lists`);
-                if (!res.ok) throw new Error('Failed to load cards');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 activeCardsMaster = data.active;
                 reactionCardsMaster = data.reaction;
-                console.log('Loaded', activeCardsMaster.length, 'active cards,', reactionCardsMaster.length, 'reaction cards');
+                console.log('Loaded cards OK');
             } catch (err) {
                 console.error('Error loading cards:', err);
                 alert('Cannot load cards from server. Please refresh.');
             }
+        }
+        
+        // Helper để fetch JSON an toàn
+        async function fetchJSON(url, options) {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Expected JSON but got ${contentType}: ${text.substring(0, 100)}`);
+            }
+            return response.json();
         }
         
         // ==================== SUBMIT PROJECT ====================
@@ -401,16 +415,19 @@
             };
             
             try {
-                const res = await fetch(`${API_BASE}/submit_project`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                const data = await fetchJSON(`${API_BASE}/submit_project`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl, project: projectData })
                 });
-                const data = await res.json();
                 if (!data.ok) throw new Error(data.error || 'Submit failed');
                 alert(`✅ Project submitted! Target funding: $${targetFunding.toLocaleString()}. Now build your deck.`);
                 document.getElementById('projectFormPanel').classList.add('hidden');
                 showDeckBuilder();
-            } catch (err) { alert(`❌ Submit failed: ${err.message}`); }
+            } catch (err) {
+                alert(`❌ Submit failed: ${err.message}`);
+                console.error(err);
+            }
         };
         
         // ==================== DECK BUILDER ====================
@@ -438,19 +455,18 @@
             document.getElementById('autoDeckBtn').onclick = async () => {
                 if (confirm('Auto-select random deck? This will replace your current selection.')) {
                     try {
-                        const res = await fetch(`${API_BASE}/auto_select_deck`, {
+                        const data = await fetchJSON(`${API_BASE}/auto_select_deck`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl })
                         });
-                        const data = await res.json();
                         if (!data.ok) throw new Error(data.error);
                         alert(`✅ ${data.message}`);
-                        // Reload to start game (deck automatically submitted)
                         document.getElementById('deckPanel').classList.add('hidden');
                         startGamePolling();
                     } catch (err) {
                         alert(`❌ Auto-select failed: ${err.message}`);
+                        console.error(err);
                     }
                 }
             };
@@ -507,20 +523,23 @@
                 const activeIndices = Array.from(selectedActive);
                 const reactionIndices = Array.from(selectedReaction);
                 try {
-                    const res = await fetch(`${API_BASE}/submit_deck`, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    const data = await fetchJSON(`${API_BASE}/submit_deck`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl, active_indices: activeIndices, reaction_indices: reactionIndices })
                     });
-                    const data = await res.json();
                     if (!data.ok) throw new Error(data.error);
                     alert(`✅ Deck submitted! Waiting for host to start the game.`);
                     document.getElementById('deckPanel').classList.add('hidden');
                     startGamePolling();
-                } catch (err) { alert(`❌ Submit deck failed: ${err.message}`); }
+                } catch (err) {
+                    alert(`❌ Submit deck failed: ${err.message}`);
+                    console.error(err);
+                }
             };
         }
         
-        // ==================== GAME POLLING (NO AUTO-PHASE) ====================
+        // ==================== GAME POLLING ====================
         function startGamePolling() {
             if (pollingInterval) clearInterval(pollingInterval);
             
@@ -531,40 +550,28 @@
             
             pollingInterval = setInterval(async () => {
                 try {
-                    const res = await fetch(`${API_BASE}/player_state?room_id=${roomIdFromUrl}&player_index=${playerIndexFromUrl}`);
-                    if (!res.ok) {
-                        if (res.status === 404) {
-                            statusDiv.innerHTML = '❌ Room not found. Please check your link.';
-                            statusDiv.classList.add('bg-red-100', 'text-red-800');
-                        }
-                        return;
-                    }
-                    const data = await res.json();
+                    const data = await fetchJSON(`${API_BASE}/player_state?room_id=${roomIdFromUrl}&player_index=${playerIndexFromUrl}`);
                     
-                    // If game has started
                     if (data.game_started && !data.game_ended) {
                         if (document.getElementById('gamePanel').classList.contains('hidden')) {
                             statusDiv.classList.add('hidden');
                             document.getElementById('gamePanel').classList.remove('hidden');
                         }
                         updateGameUIFromData(data);
-                    }
-                    // If game ended
-                    else if (data.game_ended || data.ended) {
+                    } else if (data.game_ended || data.ended) {
                         document.getElementById('finalScore').innerText = data.final_score?.toFixed(1) || '0';
                         document.getElementById('finalFunding').innerText = ((data.metrics?.funding_progress || 0) * 100).toFixed(1);
                         document.getElementById('endgamePanel').classList.remove('hidden');
                         document.getElementById('gamePanel').classList.add('hidden');
                         if (pollingInterval) clearInterval(pollingInterval);
-                    }
-                    // If still choosing deck and player hasn't submitted deck yet, show deck builder
-                    else if (data.choosing_deck === true && !deckSubmitted) {
+                    } else if (data.choosing_deck === true && !deckSubmitted) {
                         if (document.getElementById('deckPanel').classList.contains('hidden') && document.getElementById('gamePanel').classList.contains('hidden')) {
                             showDeckBuilder();
                         }
                     }
                 } catch (err) {
                     console.error('Polling error:', err);
+                    statusDiv.innerHTML = '⚠️ Error connecting to server. Retrying...';
                 }
             }, 2000);
         }
@@ -612,49 +619,57 @@
         document.getElementById('playCardBtn').onclick = async () => {
             if (selectedCardIndex === null) { alert('Select a card first'); return; }
             try {
-                const res = await fetch(`${API_BASE}/play_card`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                const data = await fetchJSON(`${API_BASE}/play_card`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl, card_index: selectedCardIndex })
                 });
-                const data = await res.json();
                 if (!data.ok) throw new Error(data.error);
                 alert(`✅ ${data.message || 'Card played!'}`);
                 selectedCardIndex = null;
-            } catch (err) { alert(`❌ ${err.message}`); }
+            } catch (err) {
+                alert(`❌ ${err.message}`);
+                console.error(err);
+            }
         };
         
         document.getElementById('mulliganBtn').onclick = async () => {
             try {
-                const res = await fetch(`${API_BASE}/mulligan`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                const data = await fetchJSON(`${API_BASE}/mulligan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl })
                 });
-                const data = await res.json();
                 if (!data.ok) throw new Error(data.error);
                 alert(`🃏 ${data.message || 'Mulligan successful!'}`);
-            } catch (err) { alert(`❌ ${err.message}`); }
+            } catch (err) {
+                alert(`❌ ${err.message}`);
+                console.error(err);
+            }
         };
         
         document.getElementById('readyBtn').onclick = async () => {
             try {
-                const res = await fetch(`${API_BASE}/player_ready_phase`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                const data = await fetchJSON(`${API_BASE}/player_ready_phase`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl })
                 });
-                const data = await res.json();
                 if (data.ok) alert('✅ You are ready! Waiting for host to run next phase.');
                 else alert('Ready failed');
-            } catch (err) { alert(`❌ ${err.message}`); }
+            } catch (err) {
+                alert(`❌ ${err.message}`);
+                console.error(err);
+            }
         };
         
         // ==================== INIT ====================
         loadCards();
-        // Check initial state to see if project already submitted
+        // Check initial state
         fetch(`${API_BASE}/player_state?room_id=${roomIdFromUrl}&player_index=${playerIndexFromUrl}`)
             .then(res => res.json())
             .then(data => {
                 if (data.hype !== undefined && data.active_deck === undefined) {
-                    // Project submitted but no deck yet
                     document.getElementById('projectFormPanel').classList.add('hidden');
                     if (data.choosing_deck) showDeckBuilder();
                     else startGamePolling();
@@ -662,7 +677,6 @@
                     document.getElementById('projectFormPanel').classList.add('hidden');
                     startGamePolling();
                 } else {
-                    // Show project form
                     document.getElementById('projectFormPanel').classList.remove('hidden');
                 }
             })
