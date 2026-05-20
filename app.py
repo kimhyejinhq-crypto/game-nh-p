@@ -1380,3 +1380,40 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
 
+@app.route('/api/submit_deck', methods=['POST'])
+def submit_deck():
+    data = request.json
+    room_id = data.get('room_id')
+    player_index = data.get('player_index')
+    active_indices = data.get('active_indices')
+    reaction_indices = data.get('reaction_indices', [])
+
+    if not room_id or player_index is None:
+        return jsonify({'error': 'Missing room_id or player_index'}), 400
+
+    room = rooms.get(room_id)
+    if not room:
+        return jsonify({'error': 'Room not found'}), 404
+
+    if room['status'] != 'choosing_deck':
+        return jsonify({'error': 'Không phải lúc chọn deck'}), 400
+
+    proj = room['players'][player_index]
+    if not proj:
+        return jsonify({'error': 'Player chưa submit dự án'}), 400
+
+    if len(active_indices) != 22:
+        return jsonify({'error': 'Phải chọn đúng 22 active cards'}), 400
+
+    # Kiểm tra index hợp lệ
+    try:
+        proj['active_deck'] = [ACTIVE_CARDS_FULL[i] for i in active_indices]
+        proj['reaction_hand'] = [REACTION_CARDS[i].copy() for i in reaction_indices]
+    except IndexError as e:
+        return jsonify({'error': f'Invalid card index: {str(e)}'}), 400
+
+    room['deck_ready'][player_index] = True
+    room['logs'].append(f"✅ Player {player_index + 1} đã chọn deck.")
+
+    try_start_game(room)
+    return jsonify({'ok': True})
