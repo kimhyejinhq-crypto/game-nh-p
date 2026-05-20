@@ -209,7 +209,7 @@ def calculate_metrics(proj):
         "reg_risk": reg_risk
     }
 
-# ==================== JIN: AI BOT GENERATION (phiên bản mới) ====================
+# ==================== JIN: AI BOT GENERATION ====================
 random.seed(42)
 BOTS = []
 for i in range(1, 201):
@@ -1391,3 +1391,4 @@ def api_reset_game(room_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
