@@ -209,7 +209,7 @@ def calculate_metrics(proj):
         "reg_risk": reg_risk
     }
 
-# ==================== JIN: AI BOT GENERATION ====================
+# ==================== JIN: AI BOT GENERATION (phiên bản mới) ====================
 random.seed(42)
 BOTS = []
 for i in range(1, 201):
