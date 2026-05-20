@@ -109,6 +109,12 @@
         .connection-status {
             transition: all 0.2s;
         }
+        .selected-card {
+            opacity: 0.6;
+            filter: grayscale(0.2);
+            border: 2px solid #ec4899;
+            box-shadow: 0 0 0 2px rgba(236,72,153,0.3);
+        }
     </style>
 </head>
 <body class="p-5 font-sans antialiased">
@@ -322,7 +328,11 @@
         
         let pollingInterval = null;
         let selectedCardIndex = null;
-        let deckSubmitted = false;
+        let deckSubmitted = false;   // Đã nộp deck thành công
+        
+        // State cho deck builder
+        let selectedActive = new Set();   // lưu index
+        let selectedReaction = new Set();
         
         // ==================== INFO MODAL ====================
         const infoDatabase = {
@@ -353,13 +363,15 @@
                 activeCardsMaster = data.active;
                 reactionCardsMaster = data.reaction;
                 console.log('Loaded cards OK');
+                return true;
             } catch (err) {
                 console.error('Error loading cards:', err);
                 alert('Cannot load cards from server. Please refresh.');
+                return false;
             }
         }
         
-        // Helper để fetch JSON an toàn
+        // Helper fetch JSON an toàn
         async function fetchJSON(url, options) {
             const response = await fetch(url, options);
             if (!response.ok) {
@@ -423,7 +435,7 @@
                 if (!data.ok) throw new Error(data.error || 'Submit failed');
                 alert(`✅ Project submitted! Target funding: $${targetFunding.toLocaleString()}. Now build your deck.`);
                 document.getElementById('projectFormPanel').classList.add('hidden');
-                showDeckBuilder();
+                await showDeckBuilder();
             } catch (err) {
                 alert(`❌ Submit failed: ${err.message}`);
                 console.error(err);
@@ -431,13 +443,18 @@
         };
         
         // ==================== DECK BUILDER ====================
-        function showDeckBuilder() {
-            if (!activeCardsMaster.length) { alert('Cards not loaded yet. Please wait.'); return; }
+        async function showDeckBuilder() {
+            // Đảm bảo cards đã được load
+            if (!activeCardsMaster.length) {
+                const loaded = await loadCards();
+                if (!loaded) return;
+            }
+            
             const deckPanel = document.getElementById('deckPanel');
             deckPanel.innerHTML = `
                 <h2 class="text-2xl font-bold mb-4 text-purple-800">BUILD YOUR DECK</h2>
                 <div class="mb-4 flex justify-end">
-                    <button id="autoDeckBtn" class="auto-deck-btn">🎲 AUTO-SELECT RANDOM DECK</button>
+                    <button id="autoDeckBtn" class="auto-deck-btn">🎲 AUTO-SELECT RANDOM DECK (Preview & Edit)</button>
                 </div>
                 <p class="text-sm mb-4">
                     <span style="color:#ff69b4;">● Hot Pink: Attack</span> | 
@@ -450,93 +467,152 @@
                 <button id="submitDeckBtn" class="btn-gradient w-full py-3 rounded-2xl font-extrabold text-white shadow-lg text-lg">CONFIRM DECK</button>
             `;
             deckPanel.classList.remove('hidden');
+            
+            // Reset selection state
+            selectedActive.clear();
+            selectedReaction.clear();
             renderDeckSelectionUI();
             
-            document.getElementById('autoDeckBtn').onclick = async () => {
-                if (confirm('Auto-select random deck? This will replace your current selection.')) {
-                    try {
-                        const data = await fetchJSON(`${API_BASE}/auto_select_deck`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl })
-                        });
-                        if (!data.ok) throw new Error(data.error);
-                        alert(`✅ ${data.message}`);
-                        document.getElementById('deckPanel').classList.add('hidden');
-                        startGamePolling();
-                    } catch (err) {
-                        alert(`❌ Auto-select failed: ${err.message}`);
-                        console.error(err);
-                    }
-                }
+            // Nút Auto chỉ random local, KHÔNG tự động submit
+            document.getElementById('autoDeckBtn').onclick = () => {
+                autoSelectRandomLocally();
             };
+        }
+        
+        // Random 22 active cards (từ tổng số) và 0-3 reaction cards, cập nhật UI
+        function autoSelectRandomLocally() {
+            if (!activeCardsMaster.length) {
+                alert('Cards not ready yet. Please wait.');
+                return;
+            }
+            const totalActive = activeCardsMaster.length;
+            const totalReaction = reactionCardsMaster.length;
+            
+            // Random 22 active indices (không trùng)
+            const shuffledActive = [...Array(totalActive).keys()];
+            for (let i = shuffledActive.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledActive[i], shuffledActive[j]] = [shuffledActive[j], shuffledActive[i]];
+            }
+            const newActiveIndices = shuffledActive.slice(0, 22);
+            
+            // Random 0-3 reaction indices
+            const numReactions = Math.floor(Math.random() * 4); // 0..3
+            const shuffledReaction = [...Array(totalReaction).keys()];
+            for (let i = shuffledReaction.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledReaction[i], shuffledReaction[j]] = [shuffledReaction[j], shuffledReaction[i]];
+            }
+            const newReactionIndices = shuffledReaction.slice(0, numReactions);
+            
+            // Cập nhật selected sets
+            selectedActive.clear();
+            newActiveIndices.forEach(idx => selectedActive.add(idx));
+            selectedReaction.clear();
+            newReactionIndices.forEach(idx => selectedReaction.add(idx));
+            
+            // Render lại UI để highlight
+            renderDeckSelectionUI();
+            
+            alert(`✨ Auto selected ${selectedActive.size} Active cards and ${selectedReaction.size} Reaction cards.\nYou can still change your selection before confirming.`);
         }
         
         function renderDeckSelectionUI() {
             const activeContainer = document.getElementById('activeList');
             const reactionContainer = document.getElementById('reactionList');
-            let selectedActive = new Set();
-            let selectedReaction = new Set();
+            if (!activeContainer || !reactionContainer) return;
             
             activeContainer.innerHTML = '';
             activeCardsMaster.forEach((card, idx) => {
                 let bgColor = card.type === 'red' ? '#ffe4e6' : (card.type === 'green' ? '#e0f2fe' : '#f3e8ff');
+                const isSelected = selectedActive.has(idx);
+                const selectedClass = isSelected ? 'selected-card' : '';
                 activeContainer.innerHTML += `
-                    <div class="rounded-lg p-2 cursor-pointer transition-all deck-card active-card" data-idx="${idx}" data-type="active" style="background-color:${bgColor};">
+                    <div class="rounded-lg p-2 cursor-pointer transition-all deck-card active-card ${selectedClass}" data-idx="${idx}" data-type="active" style="background-color:${bgColor};">
                         <div class="font-bold text-sm text-purple-800">${card.name}</div>
                         <div class="text-xs text-purple-600">Cost: ${card.cost}</div>
                         <div class="text-xs text-purple-600">${card.desc.substring(0,40)}</div>
                     </div>
                 `;
             });
+            
             reactionContainer.innerHTML = '';
             reactionCardsMaster.forEach((card, idx) => {
+                const isSelected = selectedReaction.has(idx);
+                const selectedClass = isSelected ? 'selected-card' : '';
                 reactionContainer.innerHTML += `
-                    <div class="bg-emerald-100 rounded-lg p-2 cursor-pointer hover:bg-emerald-200 transition-all deck-card reaction-card" data-idx="${idx}" data-type="reaction">
+                    <div class="bg-emerald-100 rounded-lg p-2 cursor-pointer hover:bg-emerald-200 transition-all deck-card reaction-card ${selectedClass}" data-idx="${idx}" data-type="reaction">
                         <div class="font-bold text-sm text-purple-800">${card.name}</div>
                         <div class="text-xs text-purple-600">${card.desc.substring(0,40)}</div>
                     </div>
                 `;
             });
             
+            // Gắn sự kiện click cho active cards
             document.querySelectorAll('.active-card').forEach(el => {
-                el.onclick = () => {
+                el.onclick = (e) => {
+                    e.stopPropagation();
                     const idx = parseInt(el.dataset.idx);
-                    if (selectedActive.has(idx)) { selectedActive.delete(idx); el.style.opacity='1'; el.style.filter='none'; }
-                    else if (selectedActive.size < 22) { selectedActive.add(idx); el.style.opacity='0.6'; el.style.filter='grayscale(0.2)'; }
-                    else alert('You can only select 22 Active cards!');
-                    document.getElementById('activeCount').innerText = selectedActive.size;
-                };
-            });
-            document.querySelectorAll('.reaction-card').forEach(el => {
-                el.onclick = () => {
-                    const idx = parseInt(el.dataset.idx);
-                    if (selectedReaction.has(idx)) { selectedReaction.delete(idx); el.style.opacity='1'; el.style.filter='none'; }
-                    else if (selectedReaction.size < 3) { selectedReaction.add(idx); el.style.opacity='0.6'; el.style.filter='grayscale(0.2)'; }
-                    else alert('You can only select up to 3 Reaction cards!');
-                    document.getElementById('reactionCount').innerText = selectedReaction.size;
+                    if (selectedActive.has(idx)) {
+                        selectedActive.delete(idx);
+                    } else {
+                        if (selectedActive.size >= 22) {
+                            alert('You can only select 22 Active cards!');
+                            return;
+                        }
+                        selectedActive.add(idx);
+                    }
+                    renderDeckSelectionUI(); // re-render để cập nhật giao diện
                 };
             });
             
-            document.getElementById('submitDeckBtn').onclick = async () => {
-                if (selectedActive.size !== 22) { alert('You must select exactly 22 Active cards!'); return; }
-                const activeIndices = Array.from(selectedActive);
-                const reactionIndices = Array.from(selectedReaction);
-                try {
-                    const data = await fetchJSON(`${API_BASE}/submit_deck`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl, active_indices: activeIndices, reaction_indices: reactionIndices })
-                    });
-                    if (!data.ok) throw new Error(data.error);
-                    alert(`✅ Deck submitted! Waiting for host to start the game.`);
-                    document.getElementById('deckPanel').classList.add('hidden');
-                    startGamePolling();
-                } catch (err) {
-                    alert(`❌ Submit deck failed: ${err.message}`);
-                    console.error(err);
-                }
-            };
+            // Gắn sự kiện click cho reaction cards
+            document.querySelectorAll('.reaction-card').forEach(el => {
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    const idx = parseInt(el.dataset.idx);
+                    if (selectedReaction.has(idx)) {
+                        selectedReaction.delete(idx);
+                    } else {
+                        if (selectedReaction.size >= 3) {
+                            alert('You can only select up to 3 Reaction cards!');
+                            return;
+                        }
+                        selectedReaction.add(idx);
+                    }
+                    renderDeckSelectionUI();
+                };
+            });
+            
+            document.getElementById('activeCount').innerText = selectedActive.size;
+            document.getElementById('reactionCount').innerText = selectedReaction.size;
+        }
+        
+        // Gửi deck lên server
+        async function submitDeckToServer() {
+            if (selectedActive.size !== 22) {
+                alert('You must select exactly 22 Active cards!');
+                return false;
+            }
+            const activeIndices = Array.from(selectedActive);
+            const reactionIndices = Array.from(selectedReaction);
+            try {
+                const data = await fetchJSON(`${API_BASE}/submit_deck`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ room_id: roomIdFromUrl, player_index: playerIndexFromUrl, active_indices: activeIndices, reaction_indices: reactionIndices })
+                });
+                if (!data.ok) throw new Error(data.error);
+                alert(`✅ Deck submitted! Waiting for host to start the game.`);
+                deckSubmitted = true;
+                document.getElementById('deckPanel').classList.add('hidden');
+                startGamePolling();
+                return true;
+            } catch (err) {
+                alert(`❌ Submit deck failed: ${err.message}`);
+                console.error(err);
+                return false;
+            }
         }
         
         // ==================== GAME POLLING ====================
@@ -565,6 +641,7 @@
                         document.getElementById('gamePanel').classList.add('hidden');
                         if (pollingInterval) clearInterval(pollingInterval);
                     } else if (data.choosing_deck === true && !deckSubmitted) {
+                        // Nếu chưa submit deck và game đang ở giai đoạn chọn deck, hiển thị deck builder
                         if (document.getElementById('deckPanel').classList.contains('hidden') && document.getElementById('gamePanel').classList.contains('hidden')) {
                             showDeckBuilder();
                         }
@@ -616,7 +693,7 @@
         }
         
         // ==================== PLAYER ACTIONS ====================
-        document.getElementById('playCardBtn').onclick = async () => {
+        document.getElementById('playCardBtn')?.addEventListener('click', async () => {
             if (selectedCardIndex === null) { alert('Select a card first'); return; }
             try {
                 const data = await fetchJSON(`${API_BASE}/play_card`, {
@@ -631,9 +708,9 @@
                 alert(`❌ ${err.message}`);
                 console.error(err);
             }
-        };
+        });
         
-        document.getElementById('mulliganBtn').onclick = async () => {
+        document.getElementById('mulliganBtn')?.addEventListener('click', async () => {
             try {
                 const data = await fetchJSON(`${API_BASE}/mulligan`, {
                     method: 'POST',
@@ -646,9 +723,9 @@
                 alert(`❌ ${err.message}`);
                 console.error(err);
             }
-        };
+        });
         
-        document.getElementById('readyBtn').onclick = async () => {
+        document.getElementById('readyBtn')?.addEventListener('click', async () => {
             try {
                 const data = await fetchJSON(`${API_BASE}/player_ready_phase`, {
                     method: 'POST',
@@ -661,26 +738,40 @@
                 alert(`❌ ${err.message}`);
                 console.error(err);
             }
-        };
+        });
+        
+        // Gắn sự kiện cho nút submit deck (sau khi render lại)
+        document.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'submitDeckBtn') {
+                submitDeckToServer();
+            }
+        });
         
         // ==================== INIT ====================
-        loadCards();
-        // Check initial state
-        fetch(`${API_BASE}/player_state?room_id=${roomIdFromUrl}&player_index=${playerIndexFromUrl}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.hype !== undefined && data.active_deck === undefined) {
+        (async () => {
+            await loadCards();  // đảm bảo cards có sẵn
+            // Kiểm tra trạng thái ban đầu
+            try {
+                const data = await fetchJSON(`${API_BASE}/player_state?room_id=${roomIdFromUrl}&player_index=${playerIndexFromUrl}`);
+                if (data.hype !== undefined && data.deck_ready === false && data.choosing_deck === true) {
                     document.getElementById('projectFormPanel').classList.add('hidden');
-                    if (data.choosing_deck) showDeckBuilder();
-                    else startGamePolling();
+                    await showDeckBuilder();
                 } else if (data.game_started) {
                     document.getElementById('projectFormPanel').classList.add('hidden');
+                    startGamePolling();
+                } else if (data.hype !== undefined && data.deck_ready === true) {
+                    document.getElementById('projectFormPanel').classList.add('hidden');
+                    deckSubmitted = true;
                     startGamePolling();
                 } else {
                     document.getElementById('projectFormPanel').classList.remove('hidden');
                 }
-            })
-            .catch(err => console.error('Initial state check failed:', err));
+            } catch (err) {
+                console.error('Initial state check failed:', err);
+                // vẫn hiển thị form
+                document.getElementById('projectFormPanel').classList.remove('hidden');
+            }
+        })();
     </script>
 </body>
 </html>
