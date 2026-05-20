@@ -1,11 +1,5 @@
 # ===================================================================
-# STARTUP GAME - TOÀN BỘ CODE GỘP TRONG MỘT FILE
-# PHÂN CÔNG:
-# - MINH: Dữ liệu cố định, Card Engine, Utils
-# - PHÚC: Metrics, Game Controller (process_phase, reset_for_next_phase)
-# - JIN: Attractiveness, Bot AI, Reaction Manager
-# - KHANH: API Routing, Flask app, Rooms management
-# - DƯƠNG: templates/host.html, templates/play.html (riêng)
+# STARTUP GAME - TOÀN BỘ CODE GỘP TRONG MỘT FILE (ĐÃ SỬA LỖI SUBMIT DECK)
 # ===================================================================
 
 from flask import Flask, render_template, request, jsonify
@@ -17,7 +11,7 @@ import os
 app = Flask(__name__, template_folder='templates')
 app.secret_key = 'startup-game-secret'
 
-# ===================== MINH: DỮ LIỆU CỐ ĐỊNH =====================
+# ===================== DỮ LIỆU CỐ ĐỊNH =====================
 SCENARIOS = [
     {"id":1,"name":"Market Liquidity Improves","cat":"Market","delta":{"price":0.03,"cogs":0,"hype":10,"sentiment":8,"transparency":0,"reg_risk":0}},
     {"id":2,"name":"Investor Risk Appetite Rises","cat":"Market","delta":{"price":0.08,"cogs":-0.02,"hype":22,"sentiment":15,"transparency":0,"reg_risk":0}},
@@ -45,7 +39,6 @@ SCENARIOS = [
     {"id":24,"name":"Independent Compliance Certification","cat":"Regulatory","delta":{"reg_risk":-10,"transparency":10,"trust_all":10,"legal_cost_percent":-2}},
 ]
 
-# ===================== MINH: CARD ENGINE – ACTIVE CARDS =====================
 ACTIVE_CARDS_FULL = [
     {"id":"A1","name":"Marketing Blitz","cost":2,"type":"red","desc":"Run a large campaign to quickly attract attention.","effect":{"hype":25,"transparency":-5,"cost_percent":3}},
     {"id":"A2","name":"Social Media Campaign","cost":3,"type":"red","desc":"Use social media to create strong public interest.","effect":{"hype":40,"transparency":-10,"cost_percent":5}},
@@ -91,7 +84,6 @@ ACTIVE_CARDS_FULL = [
     {"id":"C14","name":"Equity Swap","cost":3,"type":"purple","desc":"Trade ownership value for quick funding.","effect":{"funding_boost_percent":30,"trust_all":-20}},
 ]
 
-# ===================== MINH: CARD ENGINE – REACTION CARDS =====================
 REACTION_CARDS = [
     {"id":"R1","name":"Lock-up Extension","trigger":"on_bot_withdraw","condition":{"event":"bot_withdraw"},"desc":"Slow withdrawals when investors start leaving.","cost_percent":2,"effect":{"sell_pressure_reduce":0.5}},
     {"id":"R2","name":"Emergency PR","trigger":"on_scenario_market_bad","condition":{"event":"market_bad"},"desc":"Respond quickly to bad market news.","cost_percent":3,"effect":{"halve_negative_delta":1}},
@@ -105,51 +97,7 @@ REACTION_CARDS = [
     {"id":"R10","name":"Runway Boost","trigger":"on_runway_low","condition":{"metric":"runway","operator":"<","value":3},"desc":"Extend survival time during cash pressure.","cost_percent":10,"effect":{"runway":3}},
 ]
 
-def get_condition_value(project, metric):
-    if metric == "runway":
-        return calculate_metrics(project)["runway"]
-    if metric == "min_bot_trust":
-        return min(project.get("trust_scores", {0: 50}).values())
-    if metric == "whale_trust":
-        whale_scores = [
-            project["trust_scores"].get(bot["id"], 50)
-            for bot in BOTS
-            if bot["type"] == "Whale"
-        ]
-        return sum(whale_scores) / len(whale_scores) if whale_scores else 50
-    return project.get(metric)
-
-def check_condition(project, condition):
-    if not condition:
-        return True
-    if "event" in condition:
-        return condition["event"] in project.get("active_events", [])
-    metric = condition.get("metric")
-    operator = condition.get("operator")
-    target = condition.get("value")
-    current_value = get_condition_value(project, metric)
-    if current_value is None:
-        return False
-    if operator == "<":
-        return current_value < target
-    if operator == ">":
-        return current_value > target
-    if operator == "<=":
-        return current_value <= target
-    if operator == ">=":
-        return current_value >= target
-    if operator == "==":
-        return current_value == target
-    return False
-
-def get_available_reactions(project):
-    available = []
-    for card in project.get("reaction_hand", []):
-        if check_condition(project, card.get("condition")):
-            available.append(card)
-    return available
-
-# ==================== PHUC - CALCULATION ====================
+# ==================== CÁC HÀM HỖ TRỢ ====================
 def clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
@@ -254,52 +202,6 @@ def calculate_metrics(proj):
         "reg_risk": reg_risk
     }
 
-def attractiveness(project, bot, metrics):
-    raw = 0
-    total_w = 0
-    for key, w in bot["weights"].items():
-        if key == "intrinsic":
-            val = metrics["intrinsic"]
-        elif key == "valuation":
-            val = metrics["valuation_sanity"]
-        elif key == "roi_norm":
-            val = metrics["roi_norm"]
-        elif key == "scalability":
-            val = clamp(metrics["growth"] * 100, 0, 100)
-        elif key == "transparency":
-            val = project["transparency"]
-        elif key == "hype":
-            val = project["hype"]
-        elif key == "visibility":
-            val = project.get("visibility", 50)
-        elif key == "funding_prog":
-            val = metrics["funding_progress"] * 100
-        else:
-            continue
-        sens = bot["hype_sens"] if key == "hype" else (bot["trans_sens"] if key == "transparency" else 1.0)
-        raw += val * w * sens
-        total_w += w
-    if total_w == 0:
-        return 0
-    raw_A = (raw / total_w) * 100
-    if metrics["valuation_sanity"] < 40:
-        raw_A = max(0, raw_A - (40 - metrics["valuation_sanity"]) * 1.5)
-    trust = project["trust_scores"].get(bot["id"], 50)
-    noise = random.uniform(-5, 5) if bot["type"] != "Random" else random.uniform(-10, 10)
-    return raw_A * (trust / 100) + noise
-
-def final_score(proj, phases_used, metrics):
-    if proj["funding_progress"] < 0.5:
-        return 0
-    funding_score = proj["funding_progress"] * 30
-    speed_score = (100 - phases_used) * 0.2
-    roi_score = min(30, max(0, (metrics["roi_norm"] / 100) * 30))
-    trans_score = (proj["transparency"] / 100) * 20
-    raw = funding_score + speed_score + roi_score + trans_score
-    perf_phase = raw / phases_used if phases_used > 0 else 0
-    raw_final = perf_phase * proj.get("scale_factor", 1.0) * (1 + proj["funding_progress"])
-    return clamp(raw_final, 0, 100)
-
 # ==================== JIN: AI BOT GENERATION ====================
 random.seed(42)
 BOTS = []
@@ -357,6 +259,52 @@ def get_bots_for_phase(phase, total_bots=200):
     ratio = min(1.0, phase * 0.2)
     count = int(total_bots * ratio)
     return BOTS[:count]
+
+def attractiveness(project, bot, metrics):
+    raw = 0
+    total_w = 0
+    for key, w in bot["weights"].items():
+        if key == "intrinsic":
+            val = metrics["intrinsic"]
+        elif key == "valuation":
+            val = metrics["valuation_sanity"]
+        elif key == "roi_norm":
+            val = metrics["roi_norm"]
+        elif key == "scalability":
+            val = clamp(metrics["growth"] * 100, 0, 100)
+        elif key == "transparency":
+            val = project["transparency"]
+        elif key == "hype":
+            val = project["hype"]
+        elif key == "visibility":
+            val = project.get("visibility", 50)
+        elif key == "funding_prog":
+            val = metrics["funding_progress"] * 100
+        else:
+            continue
+        sens = bot["hype_sens"] if key == "hype" else (bot["trans_sens"] if key == "transparency" else 1.0)
+        raw += val * w * sens
+        total_w += w
+    if total_w == 0:
+        return 0
+    raw_A = (raw / total_w) * 100
+    if metrics["valuation_sanity"] < 40:
+        raw_A = max(0, raw_A - (40 - metrics["valuation_sanity"]) * 1.5)
+    trust = project["trust_scores"].get(bot["id"], 50)
+    noise = random.uniform(-5, 5) if bot["type"] != "Random" else random.uniform(-10, 10)
+    return raw_A * (trust / 100) + noise
+
+def final_score(proj, phases_used, metrics):
+    if proj["funding_progress"] < 0.5:
+        return 0
+    funding_score = proj["funding_progress"] * 30
+    speed_score = (100 - phases_used) * 0.2
+    roi_score = min(30, max(0, (metrics["roi_norm"] / 100) * 30))
+    trans_score = (proj["transparency"] / 100) * 20
+    raw = funding_score + speed_score + roi_score + trans_score
+    perf_phase = raw / phases_used if phases_used > 0 else 0
+    raw_final = perf_phase * proj.get("scale_factor", 1.0) * (1 + proj["funding_progress"])
+    return clamp(raw_final, 0, 100)
 
 def process_phase(room, phase, players, logs):
     active_bots = get_bots_for_phase(phase)
@@ -450,34 +398,49 @@ def process_phase(room, phase, players, logs):
                     logs.append(f"Bot {bot['type']} đầu tư {cap:.0f} vào dự án {idx+1}")
         alloc_entry['idle'] = remaining
 
-# ==================== KHANH: FLASK APP & ROOMS ====================
+# ==================== FLASK APP & ROOMS ====================
 rooms = {}
 
-# Helper function để auto start game khi tất cả đã chọn deck
 def try_start_game(room):
+    """Khởi tạo game khi tất cả người chơi đã chọn deck"""
     if room['status'] != 'choosing_deck':
         return False
-    # Kiểm tra tất cả người chơi đã submit project đều đã chọn deck
-    all_ready = all(
-        room['deck_ready'][i] or room['players'][i] is None
-        for i in range(room['num_players'])
-        if room['players'][i] is not None
-    )
-    if all_ready and any(p is not None for p in room['players']):
-        room['max_phase'] = max(p['max_phase'] for p in room['players'] if p is not None)
+
+    # Kiểm tra tất cả người chơi (đã submit project) đều đã chọn deck
+    for i, p in enumerate(room['players']):
+        if p is not None and not room['deck_ready'][i]:
+            return False
+
+    if not any(p is not None for p in room['players']):
+        return False
+
+    try:
+        # Tính max_phase từ các dự án
+        max_phase = max((p.get('max_phase', 5) for p in room['players'] if p is not None), default=5)
+        room['max_phase'] = max_phase
+
+        # Khởi tạo bot allocation
         room['bot_alloc'] = [
-            {'bot_id': bot['id'], 'perProject': [0] * room['num_players'], 'idle': bot['wealth']} 
+            {'bot_id': bot['id'], 'perProject': [0] * room['num_players'], 'idle': bot['wealth']}
             for bot in BOTS
         ]
+
         room['phase'] = 1
         room['status'] = 'playing'
-        room['logs'].append("Tất cả người chơi đã chọn deck. Game chính thức bắt đầu!")
+        room['logs'].append("🎮 Tất cả người chơi đã chọn deck. Game chính thức bắt đầu!")
+
+        # Phát bài ban đầu cho người chơi active
         for idx, p in enumerate(room['players']):
-            if p and p.get('active_deck'):
+            if p and p.get('active_deck') and len(p['active_deck']) > 0:
                 p['current_hand'] = random.sample(p['active_deck'], min(5, len(p['active_deck'])))
                 p['energy_left'] = 3
+                room['logs'].append(f"  → Player {idx+1} đã được chia {len(p['current_hand'])} lá bài.")
+            elif p:
+                room['logs'].append(f"⚠️ Player {idx+1} không có deck hợp lệ, bỏ qua.")
         return True
-    return False
+    except Exception as e:
+        room['logs'].append(f"❌ Lỗi khi bắt đầu game: {str(e)}")
+        return False
 
 @app.route('/')
 def index():
@@ -553,6 +516,11 @@ def submit_project():
     if room.get('name') is None and 'project_name' in project_data:
         room['name'] = project_data['project_name']
 
+    # Thêm max_phase dựa trên scale
+    scale = project_data.get('scale', 'M')
+    max_phase_map = {'S': 5, 'M': 7, 'L': 9}
+    project_data['max_phase'] = max_phase_map.get(scale, 7)
+
     project_data.update({
         'trust_scores': {bot['id']: 50 for bot in BOTS},
         'status': 'active',
@@ -574,7 +542,7 @@ def submit_project():
     room['player_ready'][player_index] = True
     room['submitted_players'] += 1
 
-    room['logs'].append(f"✅ Player {player_index + 1} đã submit dự án.")
+    room['logs'].append(f"✅ Player {player_index + 1} đã submit dự án (scale {scale}, max_phase {project_data['max_phase']}).")
 
     # Tự động chuyển sang choosing_deck nếu đủ số lượng người chơi (>=2)
     if room['status'] == 'waiting_for_projects' and room['submitted_players'] >= 2:
@@ -616,45 +584,78 @@ def start_deck_phase():
 
 @app.route('/api/submit_deck', methods=['POST'])
 def submit_deck():
-    data = request.json
-    room_id = data.get('room_id')
-    player_index = data.get('player_index')
-    active_indices = data.get('active_indices')
-    reaction_indices = data.get('reaction_indices', [])
-
-    if not room_id or player_index is None:
-        return jsonify({'error': 'Missing room_id or player_index'}), 400
-
-    room = rooms.get(room_id)
-    if not room:
-        return jsonify({'error': 'Room not found'}), 404
-
-    if room['status'] != 'choosing_deck':
-        return jsonify({'error': 'Không phải lúc chọn deck'}), 400
-
-    proj = room['players'][player_index]
-    if not proj:
-        return jsonify({'error': 'Player chưa submit dự án'}), 400
-
-    if len(active_indices) != 22:
-        return jsonify({'error': 'Phải chọn đúng 22 active cards'}), 400
-
-    # Kiểm tra index hợp lệ
     try:
-        proj['active_deck'] = [ACTIVE_CARDS_FULL[i] for i in active_indices]
-        proj['reaction_hand'] = [REACTION_CARDS[i].copy() for i in reaction_indices]
-    except IndexError as e:
-        return jsonify({'error': f'Invalid card index: {str(e)}'}), 400
+        data = request.json
+        room_id = data.get('room_id')
+        player_index = data.get('player_index')
+        active_indices = data.get('active_indices')
+        reaction_indices = data.get('reaction_indices', [])
 
-    room['deck_ready'][player_index] = True
-    room['logs'].append(f"✅ Player {player_index + 1} đã chọn deck.")
+        # Validate input
+        if not room_id or player_index is None:
+            return jsonify({'error': 'Missing room_id or player_index'}), 400
 
-    try_start_game(room)
-    return jsonify({'ok': True})
+        room = rooms.get(room_id)
+        if not room:
+            return jsonify({'error': 'Room not found'}), 404
+
+        if room['status'] != 'choosing_deck':
+            return jsonify({'error': 'Không phải lúc chọn deck (status: ' + room['status'] + ')'}), 400
+
+        # Kiểm tra player tồn tại
+        if player_index < 0 or player_index >= len(room['players']):
+            return jsonify({'error': 'Player index out of range'}), 400
+
+        proj = room['players'][player_index]
+        if proj is None:
+            return jsonify({'error': 'Player chưa submit dự án'}), 400
+
+        if not isinstance(active_indices, list) or len(active_indices) != 22:
+            return jsonify({'error': 'Phải chọn đúng 22 active cards'}), 400
+
+        # Kiểm tra các index có hợp lệ không
+        total_active = len(ACTIVE_CARDS_FULL)
+        total_reaction = len(REACTION_CARDS)
+
+        for idx in active_indices:
+            if not isinstance(idx, int) or idx < 0 or idx >= total_active:
+                return jsonify({'error': f'Active card index {idx} không hợp lệ (0..{total_active-1})'}), 400
+
+        for idx in reaction_indices:
+            if not isinstance(idx, int) or idx < 0 or idx >= total_reaction:
+                return jsonify({'error': f'Reaction card index {idx} không hợp lệ (0..{total_reaction-1})'}), 400
+
+        # Gán deck
+        try:
+            proj['active_deck'] = [ACTIVE_CARDS_FULL[i] for i in active_indices]
+            proj['reaction_hand'] = [REACTION_CARDS[i].copy() for i in reaction_indices]
+        except IndexError as e:
+            room['logs'].append(f"❌ Lỗi IndexError khi gán deck cho Player {player_index+1}: {str(e)}")
+            return jsonify({'error': f'Lỗi card index: {str(e)}'}), 400
+
+        # Đánh dấu đã sẵn sàng
+        room['deck_ready'][player_index] = True
+        room['logs'].append(f"✅ Player {player_index + 1} đã chọn deck ({len(active_indices)} active, {len(reaction_indices)} reaction).")
+
+        # Thử bắt đầu game nếu tất cả đã sẵn sàng
+        game_started = try_start_game(room)
+        if game_started:
+            room['logs'].append("🚀 Game đã được khởi động tự động!")
+
+        return jsonify({'ok': True, 'game_started': game_started})
+
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print("=== LỖI SUBMIT DECK ===")
+        print(error_trace)
+        if 'room_id' in locals() and room_id in rooms:
+            rooms[room_id]['logs'].append(f"❌ Lỗi submit deck của Player {player_index+1}: {str(e)}")
+        return jsonify({'error': f'Internal error: {str(e)}'}), 500
 
 @app.route('/api/auto_select_deck', methods=['POST'])
 def auto_select_deck():
-    """Tự động chọn deck ngẫu nhiên cho người chơi"""
+    """Tự động chọn deck ngẫu nhiên cho người chơi (chỉ tạo, không tự submit)"""
     data = request.json
     room_id = data['room_id']
     player_index = data['player_index']
@@ -679,24 +680,22 @@ def auto_select_deck():
     num_reactions = random.randint(0, 3)
     reaction_indices = random.sample(range(total_reaction), num_reactions) if num_reactions > 0 else []
 
+    # Chỉ lưu vào project, không tự động đánh dấu deck_ready
     proj['active_deck'] = [ACTIVE_CARDS_FULL[i] for i in active_indices]
     proj['reaction_hand'] = [REACTION_CARDS[i].copy() for i in reaction_indices]
 
-    room['deck_ready'][player_index] = True
-    room['logs'].append(f"🤖 Player {player_index + 1} đã auto-chọn deck ngẫu nhiên.")
-
-    try_start_game(room)
+    room['logs'].append(f"🤖 Player {player_index + 1} đã auto-chọn deck ngẫu nhiên (chưa submit).")
 
     return jsonify({
         'ok': True,
         'active_indices': active_indices,
         'reaction_indices': reaction_indices,
-        'message': f'Đã chọn {len(active_indices)} active cards và {len(reaction_indices)} reaction cards ngẫu nhiên.'
+        'message': f'Đã tạo {len(active_indices)} active cards và {len(reaction_indices)} reaction cards ngẫu nhiên. Bạn có thể chỉnh sửa trước khi submit.'
     })
 
 @app.route('/api/force_auto_deck', methods=['POST'])
 def force_auto_deck():
-    """Host ép các player chưa chọn deck phải auto chọn random"""
+    """Host ép các player chưa chọn deck phải auto chọn random VÀ SUBMIT LUÔN"""
     data = request.json
     room_id = data['room_id']
 
@@ -722,7 +721,7 @@ def force_auto_deck():
 
             room['deck_ready'][idx] = True
             forced_count += 1
-            room['logs'].append(f"⚡ Host force auto-chọn deck cho Player {idx + 1}.")
+            room['logs'].append(f"⚡ Host force auto-chọn deck và submit cho Player {idx + 1}.")
 
     room['logs'].append(f"🔧 Đã force auto deck cho {forced_count} người chơi.")
 
@@ -1163,8 +1162,6 @@ def card_lists():
         })
     except Exception as e:
         return jsonify({'error': 'Không thể tải danh sách thẻ', 'details': str(e)}), 500
-
-# ==================== DƯƠNG: BỔ SUNG API CHO HOST FRONTEND ====================
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
